@@ -224,9 +224,9 @@ function predictSentence(mod, samplei, temperature) {
     const probs = R.softmax(logprobs);
 
     if (samplei) {
-      ix = R.samplei(probs.w);
+      ix = R.Samplei(probs.w);
     } else {
-      ix = R.maxi(probs.w);
+      ix = R.Maxi(probs.w);
     }
 
     if (ix === 0) break; // END token predicted, break out

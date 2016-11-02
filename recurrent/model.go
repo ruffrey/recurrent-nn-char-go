@@ -94,44 +94,67 @@ func ForwardLSTM(G *Graph, model Model, hiddenSizes []int, x Mat, prev CellMemor
 		hidden_prev := hidden_prevs[d]
 		cell_prev := cell_prevs[d]
 
+		// ds is the index but as a string
 		ds := strconv.Itoa(d)
 
 		// input gate
-		h0 := G.Mul(&model["Wix"+ds], &input_vector)
-		h1 := G.Mul(&model["Wih"+ds], &hidden_prev)
+		wixds := model["Wix"+ds]
+		h0 := G.Mul(&wixds, &input_vector)
+		wihds := model["Wih"+ds]
+		h1 := G.Mul(&wihds, &hidden_prev)
 		add1 := G.Add(&h0, &h1)
-		add2 := G.Add(&add1, model["bi"+ds])
+		bids := model["bi"+ds]
+		add2 := G.Add(&add1, &bids)
 		input_gate := G.Sigmoid(&add2)
 
 		// forget gate
-		h2 := G.Mul(&model["Wfx"+ds], &input_vector)
-		h3 := G.Mul(&model["Wfh"+ds], &hidden_prev)
-		forget_gate := G.Sigmoid(G.Add(G.Add(&h2, &h3), model["bf"+ds]))
+		wfxds := model["Wfx"+ds]
+		h2 := G.Mul(&wfxds, &input_vector)
+		wfhds := model["Wfh"+ds]
+		h3 := G.Mul(&wfhds, &hidden_prev)
+		add3 := G.Add(&h2, &h3)
+		bfds := model["bf"+ds]
+		add4 := G.Add(&add3, &bfds)
+		forget_gate := G.Sigmoid(&add4)
 
 		// output gate
-		h4 := G.Mul(model["Wox"+ds], &input_vector)
-		h5 := G.Mul(model["Woh"+ds], &hidden_prev)
-		output_gate := G.Sigmoid(G.Add(G.Add(&h4, &h5), model["bo"+ds]))
+		woxds := model["Wox"+ds]
+		h4 := G.Mul(&woxds, &input_vector)
+		wohds := model["Woh"+ds]
+		h5 := G.Mul(&wohds, &hidden_prev)
+		bods := model["bo"+ds]
+		add45 := G.Add(&h4, &h5)
+		add45bods := G.Add(&add45, &bods)
+		output_gate := G.Sigmoid(&add45bods)
 
 		// write operation on cells
-		h6 := G.Mul(model["Wcx"+ds], input_vector)
-		h7 := G.Mul(model["Wch"+ds], hidden_prev)
-		cell_write := G.Tanh(G.Add(G.Add(&h6, &h7), model["bc"+ds]))
+		wcxds := model["Wcx"+ds]
+		h6 := G.Mul(&wcxds, &input_vector)
+		wchds := model["Wch"+ds]
+		h7 := G.Mul(&wchds, &hidden_prev)
+		add67 := G.Add(&h6, &h7)
+		bcds := model["bc"+ds]
+		add67bcds := G.Add(&add67, &bcds)
+		cell_write := G.Tanh(&add67bcds)
 
 		// compute new cell activation
-		retain_cell := G.Eltmul(forget_gate, cell_prev) // what do we keep from cell
-		write_cell := G.Eltmul(input_gate, cell_write)  // what do we write to cell
-		cell_d := G.Add(retain_cell, write_cell)        // new cell contents
+		retain_cell := G.Eltmul(&forget_gate, &cell_prev) // what do we keep from cell
+		write_cell := G.Eltmul(&input_gate, &cell_write)  // what do we write to cell
+		cell_d := G.Add(&retain_cell, &write_cell)        // new cell contents
 
 		// compute hidden state as gated, saturated cell activations
-		hidden_d := G.Eltmul(output_gate, G.Tanh(cell_d))
+		tahncell_d := G.Tanh(&cell_d)
+		hidden_d := G.Eltmul(&output_gate, &tahncell_d)
 
 		hidden = append(hidden, hidden_d)
 		cell = append(cell, cell_d)
 	}
 
 	// one decoder to outputs at end
-	output := G.add(G.Mul(model["Whd"], hidden[hidden.length-1]), model["bd"])
+	whd := model["Whd"]
+	bd := model["bd"]
+	whdlasthidden := G.Mul(&whd, &hidden[len(hidden)-1])
+	output := G.Add(&whdlasthidden, &bd)
 
 	// return cell memory, hidden representation and output
 	return CellMemory{

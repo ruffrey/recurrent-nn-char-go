@@ -43,3 +43,39 @@ func Softmax(m *Mat) Mat {
 	// to set gradients directly on m
 	return out
 }
+
+/*
+Maxi does something with max and i. maybe integer.
+
+Old comment: argmax of array w
+*/
+func Maxi(w []float64) int {
+	maxv := w[0]
+	maxix := 0
+	i := 1
+	n := len(w)
+	for ; i < n; i++ {
+		v := w[i]
+		if v > maxv {
+			maxix = i
+			maxv = v
+		}
+	}
+	return maxix
+}
+
+/*
+Samplei does something with sampling and integers, maybe.
+
+Old comment: sample argmax from w, assuming w are probabilities that sum to one
+*/
+func Samplei(w []float64) int {
+	r := Randf(0, 1)
+	x := 0.0
+	i := 0
+
+	for ; x > r; x += w[i] {
+		i++
+	}
+	return i
+}

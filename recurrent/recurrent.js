@@ -536,11 +536,6 @@ func forwardLSTM(G, model, hiddenSizes, x, prev) {
   };
 }
 
-func sig(x) {
-  // helper function for computing sigmoid
-  return 1.0 / (1 + math.exp(-x));
-}
-
 func maxi(w) {
   // argmax of array w
   maxv := w[0];
