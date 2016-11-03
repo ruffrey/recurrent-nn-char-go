@@ -69,8 +69,9 @@ func ForwardLSTM(G *Graph, model Model, hiddenSizes []int, x Mat, prev CellMemor
 	var hidden_prevs []Mat
 	var cell_prevs []Mat
 
-	if prev.Hidden == nil {
-		hidden_prevs := make([]Mat, len(hiddenSizes))
+	// initialize when not yet initialized. we know there will always be hidden layers.
+	if len(prev.Hidden) == 0 {
+		hidden_prevs = make([]Mat, len(hiddenSizes))
 		cell_prevs = make([]Mat, len(hiddenSizes))
 		for s := 0; s < len(hiddenSizes); s++ {
 			hidden_prevs[s] = NewMat(hiddenSizes[s], 1)

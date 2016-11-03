@@ -75,7 +75,7 @@ func initVocab(sents []string, count_threshold int) {
 	for ; i < n; i++ {
 		txti := string(txt[i])
 		if _, ok := d[txti]; ok {
-			d[txti] += 1
+			d[txti]++
 		} else {
 			d[txti] = 1
 		}
@@ -285,7 +285,7 @@ func costfun(mod recurrent.Model, sent string) Cost {
 
 		// write gradients into log probabilities
 		logprobs.DW = probs.W
-		logprobs.DW[ix_target] -= 1
+		logprobs.DW[ix_target]--
 	}
 	ppl := math.Pow(2, log2ppl/float64(n-1))
 	return Cost{
@@ -314,7 +314,7 @@ func tick() {
 	sentix := recurrent.Randi(0, len(data_sentences))
 	sent := data_sentences[sentix]
 
-	t0 := time.Now().UnixNano() / 1000 // log start timestamp
+	t0 := time.Now().UnixNano() / 1000000 // log start timestamp
 
 	// evaluate cost func on a sentence
 	cost_struct := costfun(model, sent)
@@ -324,7 +324,7 @@ func tick() {
 	// perform param update
 	solverecurrent.Step(model, learning_rate, regc, clipval)
 
-	t1 := time.Now().UnixNano() / 1000
+	t1 := time.Now().UnixNano() / 1000000
 	tick_time := t1 - t0
 
 	perplexityList = append(perplexityList, cost_struct.ppl) // keep track of perplexity
