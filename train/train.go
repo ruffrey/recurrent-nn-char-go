@@ -166,7 +166,6 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 		probs = recurrent.Softmax(&logprobs) // compute the softmax probabilities
 
 		probswixtarget = probs.W[ixTarget]
-		// fmt.Println(i, n, ixTarget, probswixtarget, log2ppl)
 
 		// the following line has a huge leak, apparently.
 		log2ppl += -math.Log2(probswixtarget) // accumulate base 2 log prob and do smoothing
@@ -245,9 +244,6 @@ func tick(state *recurrent.TrainingState) {
 		fmt.Println("perplexity", perplexity)
 		fmt.Println("ticktime", tickTime, "ms")
 		fmt.Println("medianPerplexity", medianPerplexity)
-		// m := runtime.MemStats{}
-		// runtime.ReadMemStats(&m)
-		// fmt.Println(m)
 	}
 
 	costStruct.G = nil // prevent leak
