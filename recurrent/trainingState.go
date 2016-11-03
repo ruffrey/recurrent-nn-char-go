@@ -30,17 +30,15 @@ type TrainingState struct {
 /*
 ForwardIndex forwards the index
 */
-func (state *TrainingState) ForwardIndex(G *Graph, ix int, prev *CellMemory) *CellMemory {
+func (state *TrainingState) ForwardIndex(G *Graph, ix int, prev CellMemory) CellMemory {
 	modwil := state.Model["Wil"]
 	x := G.RowPluck(&modwil, ix)
 	// forward prop the sequence learner
 	outputMemory := ForwardLSTM(G, state.Model, state.HiddenSizes, x, prev)
 
-	prev = nil // avoid leaks
-	G = nil    // avoid leaks
-	prev = nil // avoid leaks
+	G = nil // avoid leaks
 
-	return &outputMemory
+	return outputMemory
 }
 
 /*
@@ -95,7 +93,6 @@ func (state *TrainingState) InitModel() {
 	tempModel := Model{}
 	tempModel["Wil"] = RandMat(state.InputSize, state.LetterSize, 0, 0.08)
 
-	fmt.Println(state.LetterSize, state.HiddenSizes, state.OutputSize)
 	lstm := InitLSTM(state.LetterSize, state.HiddenSizes, state.OutputSize)
 	utilAddToModel(tempModel, lstm)
 

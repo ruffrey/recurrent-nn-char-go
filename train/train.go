@@ -52,11 +52,8 @@ func readFileContents(filename string) (string, error) {
 }
 
 func predictSentence(state *recurrent.TrainingState, samplei bool, temperature float64) (s string) {
-
 	G := recurrent.NewGraph(false)
-	var prev *recurrent.CellMemory
-	initial := recurrent.CellMemory{}
-	prev = &initial
+	prev := recurrent.CellMemory{}
 
 	for len(s) < maxCharsGenerate {
 		// RNN tick
@@ -66,6 +63,7 @@ func predictSentence(state *recurrent.TrainingState, samplei bool, temperature f
 		} else {
 			ix = state.LetterToIndex[string(s[len(s)-1])]
 		}
+
 		lh := state.ForwardIndex(&G, ix, prev)
 		prev = lh
 
@@ -100,10 +98,8 @@ func predictSentence(state *recurrent.TrainingState, samplei bool, temperature f
 
 		letter := state.IndexToLetter[ix]
 		s += letter
-		lh = nil
 	}
 
-	prev = nil
 	state = nil
 
 	return s
@@ -122,8 +118,6 @@ type Cost struct {
  * costfun takes a model and a sentence and
  * calculates the loss. Also returns the Graph
  * object which can be used to do backprop
- *
- * this LEAKS
  */
 func costfun(state *recurrent.TrainingState, sent string) Cost {
 	n := len(sent)
@@ -133,10 +127,8 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 
 	var ixSource int
 	var ixTarget int
-	var lh *recurrent.CellMemory
-	var prev *recurrent.CellMemory
-	initial := recurrent.CellMemory{}
-	prev = &initial
+	var lh recurrent.CellMemory
+	prev := recurrent.CellMemory{}
 	var probswixtarget float64
 	var probs recurrent.Mat
 	for i := -1; i < n; i++ {
@@ -146,6 +138,7 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 		if i == -1 {
 			ixSource = 0
 		} else {
+
 			ixSource = state.LetterToIndex[string(sent[i])]
 		}
 		// last step: end with END token
@@ -174,9 +167,6 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 	}
 
 	ppl := math.Pow(2, log2ppl/float64(n-1))
-
-	prev = nil // avoid leaks
-	lh = nil   // avoid leaks
 
 	return Cost{
 		G:    &G,
@@ -224,7 +214,6 @@ func tick(state *recurrent.TrainingState) {
 	if math.Remainder(float64(state.TickIterator), 100) == 0 {
 		pred := ""
 		fmt.Println("---------------------")
-		// fmt.Println("model=", state.Model)
 		// draw samples
 		for q := 0; q < 5; q++ {
 			pred = predictSentence(state, true, sampleSoftmaxTemperature)
