@@ -165,6 +165,7 @@ func ForwardLSTM(G *Graph, model Model, hiddenSizes []int, x Mat, prev *CellMemo
 	output := G.Add(&whdlasthidden, &bd)
 
 	prev = nil // avoid leaks
+	G = nil    // avoid leaks
 
 	// return cell memory, hidden representation and output
 	return CellMemory{

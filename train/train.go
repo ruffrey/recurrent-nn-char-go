@@ -222,7 +222,7 @@ func tick(state *recurrent.TrainingState) {
 	// evaluate now and then
 	state.TickIterator++
 
-	if math.Remainder(float64(state.TickIterator), 100) == 0 {
+	if math.Remainder(float64(state.TickIterator), 1000) == 0 {
 		pred := ""
 		fmt.Println("---------------------")
 		// draw samples
