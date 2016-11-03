@@ -23,7 +23,7 @@ var letterSize = 5
 // optimization
 // L2 regularization strength
 const regc = 0.000001
-const learning_rate = 0.01
+const learningRate = 0.01
 
 // clip gradients at this value
 const clipval = 3
@@ -33,30 +33,18 @@ const clipval = 3
 // prediction params
 
 // how peaky model predictions should be
-const sample_softmax_temperature = 1.0
+const sampleSoftmaxTemperature = 1.0
 
 // max length of generated sentences
-const max_chars_gen = 100
+const maxCharsGenerate = 100
 
 // various global var inits
-
-var epoch_size int
-var input_size int
-var output_size int
-var letterToIndex map[string]int
-var indexToLetter map[int]string
-var vocab []string
-var data_sentences []string
 
 // should be class because it needs memory for step caches
 var solverecurrent recurrent.Solver
 
 // unsure about these former accidental (?) globals
 var logprobs recurrent.Mat
-
-// var oldval;
-
-var model recurrent.Model
 
 func readFileContents(filename string) (string, error) {
 	buf, err := ioutil.ReadFile(filename)
@@ -66,128 +54,7 @@ func readFileContents(filename string) (string, error) {
 	return string(buf), nil
 }
 
-func initVocab(sents []string, count_threshold int) {
-	// go over all characters and keep track of all unique ones seen
-	txt := strings.Join(sents, "")
-
-	// count up all characters
-	d := make(map[string]int)
-	i := 0
-	n := len(txt)
-	for ; i < n; i++ {
-		txti := string(txt[i])
-		if _, ok := d[txti]; ok {
-			d[txti]++
-		} else {
-			d[txti] = 1
-		}
-	}
-
-	// filter by count threshold and create pointers
-	letterToIndex = make(map[string]int)
-	indexToLetter = make(map[int]string)
-	vocab = make([]string, 0)
-	// NOTE: start at one because we will have START and END tokens!
-	// that is, START token will be index 0 in model letter vectors
-	// and END token will be index 0 in the next character softmax
-	q := 1
-	for ch := range d {
-		if d[ch] >= count_threshold {
-			// add character to vocab
-			letterToIndex[ch] = q
-			indexToLetter[q] = ch
-			vocab = append(vocab, ch)
-			q++
-		}
-	}
-
-	// globals written: indexToLetter, letterToIndex, vocab (list), and:
-	input_size = len(vocab)
-	output_size = len(vocab)
-	epoch_size = len(sents)
-	fmt.Println("found", len(vocab), " distinct characters: ", vocab)
-}
-
-func utilAddToModel(modelto recurrent.Model, modelfrom recurrent.Model) {
-	for k := range modelfrom {
-		// copy over the pointer but change the key to use the append
-		modelto[k] = modelfrom[k]
-	}
-}
-
-func initModel() recurrent.Model {
-	// letter embedding vectors
-	tempModel := recurrent.Model{}
-	tempModel["Wil"] = recurrent.RandMat(input_size, letterSize, 0, 0.08)
-
-	lstm := recurrent.InitLSTM(letterSize, hiddenSizes, output_size)
-	utilAddToModel(tempModel, lstm)
-
-	return tempModel
-}
-
-/*
-TrainingState is the representation of the training data which gets saved or loaded
-to disk between sessions.
-*/
-type TrainingState struct {
-	HiddenSizes   []int
-	LetterSize    int
-	Model         recurrent.Model
-	Solver        recurrent.Solver
-	LetterToIndex map[string]int
-	IndexToLetter map[int]string
-	Vocab         []string
-}
-
-func saveModel() {
-	out := TrainingState{
-		HiddenSizes: hiddenSizes,
-		LetterSize:  letterSize,
-	}
-
-	out.Model = recurrent.Model{}
-	for k := range model {
-		out.Model[k] = model[k]
-	}
-
-	out.Solver = solverecurrent
-	out.LetterToIndex = letterToIndex
-	out.IndexToLetter = indexToLetter
-	out.Vocab = vocab
-
-	// TODO: finish json stuff and write it somewhere
-}
-
-func modelFromDisk() {
-	// TODO; read from disk into TrainingState{}
-}
-
-func loadModel(j TrainingState) {
-	hiddenSizes = j.HiddenSizes
-	letterSize = j.LetterSize
-	model = j.Model
-
-	solverecurrent = j.Solver
-
-	letterToIndex = j.LetterToIndex
-	indexToLetter = j.IndexToLetter
-	vocab = j.Vocab
-
-	// reinit these
-	perplexityList = make([]float64, 0)
-	tick_iter = 0
-}
-
-func forwardIndex(G *recurrent.Graph, mod recurrent.Model, ix int, prev recurrent.CellMemory) recurrent.CellMemory {
-	modwil := mod["Wil"]
-	x := G.RowPluck(&modwil, ix)
-	// forward prop the sequence learner
-	out_struct := recurrent.ForwardLSTM(G, mod, hiddenSizes, x, prev)
-	return out_struct
-}
-
-func predictSentence(mod recurrent.Model, samplei bool, temperature float64) (s string) {
+func predictSentence(state *recurrent.TrainingState, samplei bool, temperature float64) (s string) {
 	G := recurrent.NewGraph(false)
 	prev := recurrent.CellMemory{}
 
@@ -197,9 +64,9 @@ func predictSentence(mod recurrent.Model, samplei bool, temperature float64) (s 
 		if len(s) == 0 {
 			ix = 0
 		} else {
-			ix = letterToIndex[string(s[len(s)-1])]
+			ix = state.LetterToIndex[string(s[len(s)-1])]
 		}
-		lh := forwardIndex(&G, mod, ix, prev)
+		lh := state.ForwardIndex(&G, ix, prev)
 		prev = lh
 
 		// sample predicted letter
@@ -227,11 +94,11 @@ func predictSentence(mod recurrent.Model, samplei bool, temperature float64) (s 
 		if ix == 0 {
 			break // END token predicted, break out
 		}
-		if len(s) > max_chars_gen {
+		if len(s) > maxCharsGenerate {
 			break // something is wrong
 		}
 
-		letter := indexToLetter[ix]
+		letter := state.IndexToLetter[ix]
 		s += letter
 	}
 	return s
@@ -253,14 +120,14 @@ type Cost struct {
  *
  * this LEAKS
  */
-func costfun(mod recurrent.Model, sent string) Cost {
+func costfun(state *recurrent.TrainingState, sent string) Cost {
 	n := len(sent)
 	G := recurrent.NewGraph(true)
-	log2ppl := 0.0
-	cost := 0.0
+	var log2ppl float64
+	var cost float64
 
-	var ix_source int
-	var ix_target int
+	var ixSource int
+	var ixTarget int
 	var lh recurrent.CellMemory
 	var prev recurrent.CellMemory
 	var probswixtarget float64
@@ -270,32 +137,34 @@ func costfun(mod recurrent.Model, sent string) Cost {
 
 		// first step: start with START token
 		if i == -1 {
-			ix_source = 0
+			ixSource = 0
 		} else {
-			ix_source = letterToIndex[string(sent[i])]
+			ixSource = state.LetterToIndex[string(sent[i])]
 		}
 		// last step: end with END token
 		if i == n-1 {
-			ix_target = 0
+			ixTarget = 0
 		} else {
-			ix_target = letterToIndex[string(sent[i+1])]
+			ixTarget = state.LetterToIndex[string(sent[i+1])]
 		}
 
-		lh = forwardIndex(&G, mod, ix_source, prev)
+		lh = state.ForwardIndex(&G, ixSource, prev)
 		prev = lh
 
 		// set gradients into logprobabilities
 		logprobs = lh.Output                 // interpret output as logprobs
 		probs = recurrent.Softmax(&logprobs) // compute the softmax probabilities
 
-		probswixtarget = probs.W[ix_target]
-		// fmt.Println(i, n, ix_target, probswixtarget)
+		probswixtarget = probs.W[ixTarget]
+		// fmt.Println(i, n, ixTarget, probswixtarget, log2ppl)
+
+		// the following line has a huge leak, apparently.
 		log2ppl += -math.Log2(probswixtarget) // accumulate base 2 log prob and do smoothing
 		cost += -math.Log2(probswixtarget)
 
 		// write gradients into log probabilities
 		logprobs.DW = probs.W
-		logprobs.DW[ix_target]--
+		logprobs.DW[ixTarget]--
 	}
 
 	ppl := math.Pow(2, log2ppl/float64(n-1))
@@ -317,53 +186,50 @@ func median(values []float64) float64 {
 	return (values[half-1] + values[half]) / 2.0
 }
 
-var perplexityList []float64
-var tick_iter int
-
-func tick() {
+func tick(state *recurrent.TrainingState) {
 	defer func() {
-		tick()
+		tick(state)
 	}()
 	// sample sentence fromd data
-	sentix := recurrent.Randi(0, len(data_sentences))
-	sent := data_sentences[sentix]
+	sentix := recurrent.Randi(0, len(state.DataSentences))
+	sent := state.DataSentences[sentix]
 
-	t0 := time.Now().UnixNano() / 1000000 // log start timestamp
+	t0 := time.Now().UnixNano() / 1000000 // log start timestamp ms
 
 	// evaluate cost func on a sentence
-	cost_struct := costfun(model, sent)
+	costStruct := costfun(state, sent)
 
 	// use built up graph to compute backprop (set .dw fields in mats)
-	cost_struct.G.Backward()
+	costStruct.G.Backward()
 	// perform param update
-	solverecurrent.Step(model, learning_rate, regc, clipval)
+	solverecurrent.Step(state.Model, learningRate, regc, clipval)
 
-	t1 := time.Now().UnixNano() / 1000000
-	tick_time := t1 - t0
+	t1 := time.Now().UnixNano() / 1000000 // ms
+	tickTime := t1 - t0
 
-	perplexityList = append(perplexityList, cost_struct.ppl) // keep track of perplexity
+	state.PerplexityList = append(state.PerplexityList, costStruct.ppl) // keep track of perplexity
 
 	// evaluate now and then
-	tick_iter++
+	state.TickIterator++
 
-	if math.Remainder(float64(tick_iter), 50) == 0 {
+	if math.Remainder(float64(state.TickIterator), 100) == 0 {
 		pred := ""
 		fmt.Println("---------------------")
 		// draw samples
 		for q := 0; q < 5; q++ {
-			pred = predictSentence(model, true, sample_softmax_temperature)
+			pred = predictSentence(state, true, sampleSoftmaxTemperature)
 			fmt.Println("prediction", pred)
 		}
 
-		epoch := (tick_iter / epoch_size)
-		perplexity := cost_struct.ppl
-		medianPerplexity := median(perplexityList)
-		perplexityList = make([]float64, 0)
+		epoch := (state.TickIterator / state.EpochSize)
+		perplexity := costStruct.ppl
+		medianPerplexity := median(state.PerplexityList)
+		state.PerplexityList = make([]float64, 0)
 
 		fmt.Println("epoch=", epoch)
-		fmt.Println("epoch_size", epoch_size)
+		fmt.Println("EpochSize", state.EpochSize)
 		fmt.Println("perplexity", perplexity)
-		fmt.Println("ticktime", tick_time, "ms")
+		fmt.Println("ticktime", tickTime, "ms")
 		fmt.Println("medianPerplexity", medianPerplexity)
 		// m := runtime.MemStats{}
 		// runtime.ReadMemStats(&m)
@@ -379,37 +245,43 @@ func main() {
 	hiddenSizes[0] = 20
 	hiddenSizes[1] = 20
 
-	epoch_size = -1
-	input_size = -1
-	output_size = -1
+	// this is where the training state is held in memory, not in global scope
+	// most importantly, to prevent leaks.
+	// (could also fetch from disk)
+	state := recurrent.TrainingState{
+		HiddenSizes: hiddenSizes,
+		EpochSize:   -1,
+		InputSize:   -1,
+		OutputSize:  -1,
+	}
 
-	perplexityList = make([]float64, 0)
-	data_sentences = make([]string, 0)
+	state.PerplexityList = make([]float64, 0)
+	state.DataSentences = make([]string, 0)
 
 	solverecurrent = recurrent.NewSolver() // reinit solver
-	tick_iter = 0
+	state.TickIterator = 0
 
 	// process the input, filter out blanks
 	input, err := readFileContents("input.txt")
 	if err != nil {
 		log.Fatal("Failed reading file input", err)
 	}
-	data_sentences_raw := strings.Split(input, "\n")
+	dataSentencesRaw := strings.Split(input, "\n")
 
-	for i := 0; i < len(data_sentences_raw); i++ {
-		sent := data_sentences_raw[i] // .trim();
+	for i := 0; i < len(dataSentencesRaw); i++ {
+		sent := dataSentencesRaw[i] // .trim();
 		if len(sent) > 0 {
-			data_sentences = append(data_sentences, sent)
+			state.DataSentences = append(state.DataSentences, sent)
 		}
 	}
 
-	initVocab(data_sentences, 1) // takes count threshold for characters
-	model = initModel()
+	state.InitVocab(state.DataSentences, 1) // takes count threshold for characters
+	state.InitModel()
 
 	// checking memory leaks
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	tick()
+	tick(&state)
 }
