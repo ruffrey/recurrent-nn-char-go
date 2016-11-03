@@ -60,11 +60,13 @@ func (g *Graph) RowPluck(m *Mat, ix int) Mat {
 			for j := 0; j < n; j++ {
 				m.DW[d*ix+j] += out.DW[j]
 			}
+			m = nil // avoid leaks
 		}
 		g.AddBackprop(backpropRowPluck)
 	} else {
 		m = nil // avoid leaks
 	}
+
 	return out
 }
 

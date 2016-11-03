@@ -102,9 +102,11 @@ func predictSentence(state *recurrent.TrainingState, samplei bool, temperature f
 
 		letter := state.IndexToLetter[ix]
 		s += letter
+		lh = nil
 	}
 
 	prev = nil
+	state = nil
 
 	return s
 }
@@ -113,7 +115,7 @@ func predictSentence(state *recurrent.TrainingState, samplei bool, temperature f
 Cost represents the result of running the cost function.
 */
 type Cost struct {
-	G    recurrent.Graph
+	G    *recurrent.Graph
 	ppl  float64
 	cost float64
 }
@@ -180,9 +182,9 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 	lh = nil   // avoid leaks
 
 	return Cost{
-		G,
-		ppl,
-		cost,
+		G:    &G,
+		ppl:  ppl,
+		cost: cost,
 	}
 }
 
@@ -245,6 +247,8 @@ func tick(state *recurrent.TrainingState) {
 		// runtime.ReadMemStats(&m)
 		// fmt.Println(m)
 	}
+
+	costStruct.G = nil // prevent leak
 }
 
 // old gradCheck was here.
