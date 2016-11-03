@@ -60,6 +60,8 @@ func (g *Graph) RowPluck(m *Mat, ix int) Mat {
 				m.DW[d*ix+j] += out.DW[j]
 			}
 		})
+	} else {
+		m = nil // avoid leaks
 	}
 	return out
 }
@@ -81,7 +83,10 @@ func (g *Graph) Tanh(m *Mat) Mat {
 				mwi := out.W[i]
 				m.DW[i] += (1.0 - mwi*mwi) * out.DW[i]
 			}
+			m = nil // avoid leaks
 		})
+	} else {
+		m = nil // avoid leaks
 	}
 	return out
 }
@@ -104,8 +109,12 @@ func (g *Graph) Sigmoid(m *Mat) Mat {
 				mwi := out.W[i]
 				m.DW[i] += mwi * (1.0 - mwi) * out.DW[i]
 			}
+			m = nil // avoid leaks
 		})
+	} else {
+		m = nil // avoid leaks
 	}
+
 	return out
 }
 
@@ -125,8 +134,12 @@ func (g *Graph) Relu(m *Mat) Mat {
 					m.DW[i] += out.DW[i]
 				}
 			}
+			m = nil // avoid leaks
 		})
+	} else {
+		m = nil // avoid leaks
 	}
+
 	return out
 }
 
@@ -164,7 +177,12 @@ func (g *Graph) Mul(m1 *Mat, m2 *Mat) Mat {
 					}
 				}
 			}
+			m1 = nil // avoid leaks
+			m2 = nil // avoid leaks
 		})
+	} else {
+		m1 = nil // avoid leaks
+		m2 = nil // avoid leaks
 	}
 	return out
 }
@@ -189,7 +207,12 @@ func (g *Graph) Add(m1 *Mat, m2 *Mat) Mat {
 				m1.DW[i] += out.DW[i]
 				m2.DW[i] += out.DW[i]
 			}
+			m1 = nil // avoid leaks
+			m2 = nil // avoid leaks
 		})
+	} else {
+		m1 = nil // avoid leaks
+		m2 = nil // avoid leaks
 	}
 	return out
 }
@@ -213,7 +236,13 @@ func (g *Graph) Eltmul(m1 *Mat, m2 *Mat) Mat {
 				m1.DW[i] += m2.W[i] * out.DW[i]
 				m2.DW[i] += m1.W[i] * out.DW[i]
 			}
+			m1 = nil // avoid leaks
+			m2 = nil // avoid leaks
 		})
+	} else {
+		m1 = nil // avoid leaks
+		m2 = nil // avoid leaks
 	}
+
 	return out
 }

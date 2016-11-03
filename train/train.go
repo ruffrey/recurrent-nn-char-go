@@ -56,7 +56,9 @@ func readFileContents(filename string) (string, error) {
 
 func predictSentence(state *recurrent.TrainingState, samplei bool, temperature float64) (s string) {
 	G := recurrent.NewGraph(false)
-	prev := recurrent.CellMemory{}
+	var prev *recurrent.CellMemory
+	initial := recurrent.CellMemory{}
+	prev = &initial
 
 	for {
 		// RNN tick
@@ -101,6 +103,9 @@ func predictSentence(state *recurrent.TrainingState, samplei bool, temperature f
 		letter := state.IndexToLetter[ix]
 		s += letter
 	}
+
+	prev = nil
+
 	return s
 }
 
@@ -128,8 +133,10 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 
 	var ixSource int
 	var ixTarget int
-	var lh recurrent.CellMemory
-	var prev recurrent.CellMemory
+	var lh *recurrent.CellMemory
+	var prev *recurrent.CellMemory
+	initial := recurrent.CellMemory{}
+	prev = &initial
 	var probswixtarget float64
 	var probs recurrent.Mat
 	for i := -1; i < n; i++ {
@@ -168,6 +175,9 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 	}
 
 	ppl := math.Pow(2, log2ppl/float64(n-1))
+
+	prev = nil // avoid leaks
+	lh = nil   // avoid leaks
 
 	return Cost{
 		G,
