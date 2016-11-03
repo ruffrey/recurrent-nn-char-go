@@ -43,9 +43,6 @@ const maxCharsGenerate = 100
 // should be class because it needs memory for step caches
 var solverecurrent recurrent.Solver
 
-// unsure about these former accidental (?) globals
-var logprobs recurrent.Mat
-
 func readFileContents(filename string) (string, error) {
 	buf, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -73,7 +70,7 @@ func predictSentence(state *recurrent.TrainingState, samplei bool, temperature f
 		prev = lh
 
 		// sample predicted letter
-		logprobs = lh.Output
+		logprobs := lh.Output
 		if temperature != 1.0 && samplei {
 			// scale log probabilities by temperature and renormalize
 			// if temperature is high, logprobs will go towards zero
@@ -162,7 +159,7 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 		prev = lh
 
 		// set gradients into logprobabilities
-		logprobs = lh.Output                 // interpret output as logprobs
+		logprobs := lh.Output                // interpret output as logprobs
 		probs = recurrent.Softmax(&logprobs) // compute the softmax probabilities
 
 		probswixtarget = probs.W[ixTarget]
