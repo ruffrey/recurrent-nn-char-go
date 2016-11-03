@@ -11,9 +11,9 @@ type Model map[string]Mat
 CellMemory is apparently passed around during foward LSTM sessions.
 */
 type CellMemory struct {
-	h []Mat // hidden
-	c []Mat // cell
-	o Mat   // output
+	Hidden []Mat
+	Cell   []Mat
+	Output Mat
 }
 
 /*
@@ -69,7 +69,7 @@ func ForwardLSTM(G *Graph, model Model, hiddenSizes []int, x Mat, prev CellMemor
 	var hidden_prevs []Mat
 	var cell_prevs []Mat
 
-	if prev.h == nil {
+	if prev.Hidden == nil {
 		hidden_prevs := make([]Mat, len(hiddenSizes))
 		cell_prevs = make([]Mat, len(hiddenSizes))
 		for s := 0; s < len(hiddenSizes); s++ {
@@ -77,8 +77,8 @@ func ForwardLSTM(G *Graph, model Model, hiddenSizes []int, x Mat, prev CellMemor
 			cell_prevs[s] = NewMat(hiddenSizes[s], 1)
 		}
 	} else {
-		hidden_prevs = prev.h
-		cell_prevs = prev.c
+		hidden_prevs = prev.Hidden
+		cell_prevs = prev.Cell
 	}
 
 	var hidden []Mat
@@ -158,8 +158,8 @@ func ForwardLSTM(G *Graph, model Model, hiddenSizes []int, x Mat, prev CellMemor
 
 	// return cell memory, hidden representation and output
 	return CellMemory{
-		h: hidden,
-		c: cell,
-		o: output,
+		Hidden: hidden,
+		Cell:   cell,
+		Output: output,
 	}
 }

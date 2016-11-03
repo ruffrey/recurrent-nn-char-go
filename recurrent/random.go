@@ -17,8 +17,10 @@ func Randf(a float64, b float64) float64 {
 }
 
 /*
-Randi makes random integers
+Randi makes random integers between two integers
 */
-func Randi(a float64, b float64) float64 {
-	return math.Floor(r.Float64()*(b-a) + a)
+func Randi(low int, hi int) int {
+	a := float64(low)
+	b := float64(hi)
+	return int(math.Floor(r.Float64()*(b-a) + a))
 }
