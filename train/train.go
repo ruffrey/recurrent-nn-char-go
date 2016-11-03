@@ -55,12 +55,13 @@ func readFileContents(filename string) (string, error) {
 }
 
 func predictSentence(state *recurrent.TrainingState, samplei bool, temperature float64) (s string) {
+
 	G := recurrent.NewGraph(false)
 	var prev *recurrent.CellMemory
 	initial := recurrent.CellMemory{}
 	prev = &initial
 
-	for {
+	for len(s) < maxCharsGenerate {
 		// RNN tick
 		var ix int
 		if len(s) == 0 {
@@ -224,9 +225,10 @@ func tick(state *recurrent.TrainingState) {
 	// evaluate now and then
 	state.TickIterator++
 
-	if math.Remainder(float64(state.TickIterator), 1000) == 0 {
+	if math.Remainder(float64(state.TickIterator), 100) == 0 {
 		pred := ""
 		fmt.Println("---------------------")
+		// fmt.Println("model=", state.Model)
 		// draw samples
 		for q := 0; q < 5; q++ {
 			pred = predictSentence(state, true, sampleSoftmaxTemperature)
@@ -270,7 +272,6 @@ func main() {
 	}
 
 	state.PerplexityList = make([]float64, 0)
-	state.DataSentences = make([]string, 0)
 
 	solverecurrent = recurrent.NewSolver() // reinit solver
 	state.TickIterator = 0
@@ -280,18 +281,10 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed reading file input", err)
 	}
-	dataSentencesRaw := strings.Split(input, "\n")
 
-	for i := 0; i < len(dataSentencesRaw); i++ {
-		sent := dataSentencesRaw[i] // .trim();
-		if len(sent) > 0 {
-			state.DataSentences = append(state.DataSentences, sent)
-		}
-	}
-
+	state.DataSentences = strings.Split(input, "\n")
 	state.InitVocab(state.DataSentences, 1) // takes count threshold for characters
 	state.InitModel()
-
 	// checking memory leaks
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
