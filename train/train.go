@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
+	"net/http"
+	_ "net/http/pprof"
 	"recurrent/recurrent"
 	"sort"
 	"strings"
@@ -248,46 +250,56 @@ type Cost struct {
  * costfun takes a model and a sentence and
  * calculates the loss. Also returns the Graph
  * object which can be used to do backprop
+ *
+ * this LEAKS
  */
 func costfun(mod recurrent.Model, sent string) Cost {
 	n := len(sent)
 	G := recurrent.NewGraph(true)
 	log2ppl := 0.0
 	cost := 0.0
-	prev := recurrent.CellMemory{}
+
+	var ix_source int
+	var ix_target int
+	var lh recurrent.CellMemory
+	var prev recurrent.CellMemory
+	var probswixtarget float64
+	var probs recurrent.Mat
 	for i := -1; i < n; i++ {
 		// start and end tokens are zeros
 
 		// first step: start with START token
-		var ix_source int
 		if i == -1 {
 			ix_source = 0
 		} else {
 			ix_source = letterToIndex[string(sent[i])]
 		}
 		// last step: end with END token
-		var ix_target int
 		if i == n-1 {
 			ix_target = 0
 		} else {
 			ix_target = letterToIndex[string(sent[i+1])]
 		}
 
-		lh := forwardIndex(&G, mod, ix_source, prev)
+		lh = forwardIndex(&G, mod, ix_source, prev)
 		prev = lh
 
 		// set gradients into logprobabilities
-		logprobs = lh.Output                  // interpret output as logprobs
-		probs := recurrent.Softmax(&logprobs) // compute the softmax probabilities
+		logprobs = lh.Output                 // interpret output as logprobs
+		probs = recurrent.Softmax(&logprobs) // compute the softmax probabilities
 
-		log2ppl += -math.Log2(probs.W[ix_target]) // accumulate base 2 log prob and do smoothing
-		cost += -math.Log2(probs.W[ix_target])
+		probswixtarget = probs.W[ix_target]
+		// fmt.Println(i, n, ix_target, probswixtarget)
+		log2ppl += -math.Log2(probswixtarget) // accumulate base 2 log prob and do smoothing
+		cost += -math.Log2(probswixtarget)
 
 		// write gradients into log probabilities
 		logprobs.DW = probs.W
 		logprobs.DW[ix_target]--
 	}
+
 	ppl := math.Pow(2, log2ppl/float64(n-1))
+
 	return Cost{
 		G,
 		ppl,
@@ -309,7 +321,9 @@ var perplexityList []float64
 var tick_iter int
 
 func tick() {
-	defer tick() // loop it again
+	defer func() {
+		tick()
+	}()
 	// sample sentence fromd data
 	sentix := recurrent.Randi(0, len(data_sentences))
 	sent := data_sentences[sentix]
@@ -351,6 +365,9 @@ func tick() {
 		fmt.Println("perplexity", perplexity)
 		fmt.Println("ticktime", tick_time, "ms")
 		fmt.Println("medianPerplexity", medianPerplexity)
+		// m := runtime.MemStats{}
+		// runtime.ReadMemStats(&m)
+		// fmt.Println(m)
 	}
 }
 
@@ -389,6 +406,10 @@ func main() {
 	initVocab(data_sentences, 1) // takes count threshold for characters
 	model = initModel()
 
-	// go!
+	// checking memory leaks
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	tick()
 }
