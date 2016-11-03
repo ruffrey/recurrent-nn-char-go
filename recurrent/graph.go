@@ -38,6 +38,7 @@ func (g *Graph) Backward() {
 	for _, fn := range g.Backprop {
 		fn()
 	}
+	g.Backprop = nil
 }
 
 /*
@@ -55,11 +56,12 @@ func (g *Graph) RowPluck(m *Mat, ix int) Mat {
 	} // copy over the data
 
 	if g.NeedsBackprop {
-		g.AddBackprop(func() {
+		backpropRowPluck := func() {
 			for j := 0; j < n; j++ {
 				m.DW[d*ix+j] += out.DW[j]
 			}
-		})
+		}
+		g.AddBackprop(backpropRowPluck)
 	} else {
 		m = nil // avoid leaks
 	}
@@ -77,14 +79,15 @@ func (g *Graph) Tanh(m *Mat) Mat {
 	}
 
 	if g.NeedsBackprop {
-		g.AddBackprop(func() {
+		backpropTahn := func() {
 			for i := 0; i < n; i++ {
 				// grad for z = tanh(x) is (1 - z^2)
 				mwi := out.W[i]
 				m.DW[i] += (1.0 - mwi*mwi) * out.DW[i]
 			}
 			m = nil // avoid leaks
-		})
+		}
+		g.AddBackprop(backpropTahn)
 	} else {
 		m = nil // avoid leaks
 	}
@@ -103,14 +106,15 @@ func (g *Graph) Sigmoid(m *Mat) Mat {
 	}
 
 	if g.NeedsBackprop {
-		g.AddBackprop(func() {
+		backpropSigmoid := func() {
 			for i := 0; i < n; i++ {
 				// grad for z = tanh(x) is (1 - z^2)
 				mwi := out.W[i]
 				m.DW[i] += mwi * (1.0 - mwi) * out.DW[i]
 			}
 			m = nil // avoid leaks
-		})
+		}
+		g.AddBackprop(backpropSigmoid)
 	} else {
 		m = nil // avoid leaks
 	}
@@ -128,14 +132,15 @@ func (g *Graph) Relu(m *Mat) Mat {
 		out.W[ix] = math.Max(0, m.W[ix]) // relu
 	}
 	if g.NeedsBackprop {
-		g.AddBackprop(func() {
+		backpropRelu := func() {
 			for i := 0; i < n; i++ {
 				if m.W[i] > 0 {
 					m.DW[i] += out.DW[i]
 				}
 			}
 			m = nil // avoid leaks
-		})
+		}
+		g.AddBackprop(backpropRelu)
 	} else {
 		m = nil // avoid leaks
 	}
@@ -166,7 +171,7 @@ func (g *Graph) Mul(m1 *Mat, m2 *Mat) Mat {
 
 	if g.NeedsBackprop {
 		// it is important to not share scope variables from above, as much as possible.
-		g.AddBackprop(func() {
+		backpropMul := func() {
 			b := 0.0
 			for i := 0; i < m1.RowCount; i++ { // loop over rows of m1
 				for j := 0; j < m2.ColumnCount; j++ { // loop over cols of m2
@@ -179,7 +184,8 @@ func (g *Graph) Mul(m1 *Mat, m2 *Mat) Mat {
 			}
 			m1 = nil // avoid leaks
 			m2 = nil // avoid leaks
-		})
+		}
+		g.AddBackprop(backpropMul)
 	} else {
 		m1 = nil // avoid leaks
 		m2 = nil // avoid leaks
@@ -201,7 +207,7 @@ func (g *Graph) Add(m1 *Mat, m2 *Mat) Mat {
 		out.W[ix] = m1.W[ix] + m2.W[ix]
 	}
 	if g.NeedsBackprop {
-		g.AddBackprop(func() {
+		backpropAdd := func() {
 			last := len(m1.W)
 			for i := 0; i < last; i++ {
 				m1.DW[i] += out.DW[i]
@@ -209,7 +215,8 @@ func (g *Graph) Add(m1 *Mat, m2 *Mat) Mat {
 			}
 			m1 = nil // avoid leaks
 			m2 = nil // avoid leaks
-		})
+		}
+		g.AddBackprop(backpropAdd)
 	} else {
 		m1 = nil // avoid leaks
 		m2 = nil // avoid leaks
@@ -230,7 +237,7 @@ func (g *Graph) Eltmul(m1 *Mat, m2 *Mat) Mat {
 		out.W[ix] = m1.W[ix] * m2.W[ix]
 	}
 	if g.NeedsBackprop {
-		g.AddBackprop(func() {
+		backpropEtlmul := func() {
 			last := len(m1.W)
 			for i := 0; i < last; i++ {
 				m1.DW[i] += m2.W[i] * out.DW[i]
@@ -238,7 +245,8 @@ func (g *Graph) Eltmul(m1 *Mat, m2 *Mat) Mat {
 			}
 			m1 = nil // avoid leaks
 			m2 = nil // avoid leaks
-		})
+		}
+		g.AddBackprop(backpropEtlmul)
 	} else {
 		m1 = nil // avoid leaks
 		m2 = nil // avoid leaks
