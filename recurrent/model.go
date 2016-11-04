@@ -67,7 +67,7 @@ from previous iteration
 
 This may be causing leaks
 */
-func ForwardLSTM(G *Graph, model Model, hiddenSizes []int, x Mat, prev CellMemory) CellMemory {
+func ForwardLSTM(G *Graph, model Model, hiddenSizes []int, x Mat, prev CellMemory) (Model, CellMemory) {
 	var hiddenPrevs []Mat
 	var cellPrevs []Mat
 
@@ -167,7 +167,7 @@ func ForwardLSTM(G *Graph, model Model, hiddenSizes []int, x Mat, prev CellMemor
 	G = nil // avoid leaks
 
 	// return cell memory, hidden representation and output
-	return CellMemory{
+	return model, CellMemory{
 		Hidden: hidden,
 		Cell:   cell,
 		Output: output,

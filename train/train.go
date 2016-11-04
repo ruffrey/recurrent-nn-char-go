@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
-	"net/http"
-	_ "net/http/pprof"
+	// "net/http"
+	// _ "net/http/pprof"
 	"recurrent/recurrent"
 	"sort"
 	"strings"
@@ -68,20 +68,20 @@ func predictSentence(state *recurrent.TrainingState, samplei bool, temperature f
 		prev = lh
 
 		// sample predicted letter
-		logprobs := lh.Output
+		logrithmicProbabilities := lh.Output
 		if temperature != 1.0 && samplei {
 			// scale log probabilities by temperature and renormalize
-			// if temperature is high, logprobs will go towards zero
+			// if temperature is high, logrithmicProbabilities will go towards zero
 			// and the softmax outputs will be more diffuse. if temperature is
 			// very low, the softmax outputs will be more peaky
 			q := 0
-			nq := len(logprobs.W)
+			nq := len(logrithmicProbabilities.W)
 			for ; q < nq; q++ {
-				logprobs.W[q] /= temperature
+				logrithmicProbabilities.W[q] /= temperature
 			}
 		}
 
-		probs := recurrent.Softmax(&logprobs)
+		probs := recurrent.Softmax(&logrithmicProbabilities)
 
 		if samplei {
 			ix = recurrent.Samplei(probs.W)
@@ -131,6 +131,8 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 	prev := recurrent.CellMemory{}
 	var probswixtarget float64
 	var probs recurrent.Mat
+
+	// loop through each letter of the selected sentence
 	for i := -1; i < n; i++ {
 		// start and end tokens are zeros
 
@@ -138,7 +140,6 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 		if i == -1 {
 			ixSource = 0
 		} else {
-
 			ixSource = state.LetterToIndex[string(sent[i])]
 		}
 		// last step: end with END token
@@ -147,13 +148,15 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 		} else {
 			ixTarget = state.LetterToIndex[string(sent[i+1])]
 		}
-
+		// TODO: this is never changing the value
+		// fmt.Println(prev)
 		lh = state.ForwardIndex(&G, ixSource, prev)
+		// fmt.Println(lh)
 		prev = lh
 
 		// set gradients into logprobabilities
-		logprobs := lh.Output                // interpret output as logprobs
-		probs = recurrent.Softmax(&logprobs) // compute the softmax probabilities
+		logrithmicProbabilities := lh.Output                // interpret output as logrithmicProbabilities
+		probs = recurrent.Softmax(&logrithmicProbabilities) // compute the softmax probabilities
 
 		probswixtarget = probs.W[ixTarget]
 
@@ -162,8 +165,8 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 		cost += -math.Log2(probswixtarget)
 
 		// write gradients into log probabilities
-		logprobs.DW = probs.W
-		logprobs.DW[ixTarget]--
+		logrithmicProbabilities.DW = probs.W
+		logrithmicProbabilities.DW[ixTarget]--
 	}
 
 	ppl := math.Pow(2, log2ppl/float64(n-1))
@@ -189,7 +192,7 @@ func tick(state *recurrent.TrainingState) {
 	defer func() {
 		tick(state)
 	}()
-	// sample sentence fromd data
+	// sample sentence from data
 	sentix := recurrent.Randi(0, len(state.DataSentences))
 	sent := state.DataSentences[sentix]
 
@@ -198,20 +201,22 @@ func tick(state *recurrent.TrainingState) {
 	// evaluate cost func on a sentence
 	costStruct := costfun(state, sent)
 
-	// use built up graph to compute backprop (set .dw fields in mats)
+	// use built up graph to compute backprop (set .DW fields in mats)
 	costStruct.G.Backward()
 	// perform param update
-	solverecurrent.Step(state.Model, learningRate, regc, clipval)
+	var solverStats recurrent.SolverStats
+	state.Model, solverStats = solverecurrent.Step(state.Model, learningRate, regc, clipval)
 
 	t1 := time.Now().UnixNano() / 1000000 // ms
 	tickTime := t1 - t0
 
-	state.PerplexityList = append(state.PerplexityList, costStruct.ppl) // keep track of perplexity
+	// keep track of perplexity between printing progress
+	state.PerplexityList = append(state.PerplexityList, costStruct.ppl)
 
 	// evaluate now and then
 	state.TickIterator++
 
-	if math.Remainder(float64(state.TickIterator), 100) == 0 {
+	if math.Remainder(float64(state.TickIterator), 250) == 0 {
 		pred := ""
 		fmt.Println("---------------------")
 		// draw samples
@@ -220,7 +225,7 @@ func tick(state *recurrent.TrainingState) {
 			fmt.Println("prediction", pred)
 		}
 
-		epoch := (state.TickIterator / state.EpochSize)
+		epoch := (float32(state.TickIterator) / float32(state.EpochSize))
 		perplexity := costStruct.ppl
 		medianPerplexity := median(state.PerplexityList)
 		state.PerplexityList = make([]float64, 0)
@@ -230,6 +235,7 @@ func tick(state *recurrent.TrainingState) {
 		fmt.Println("perplexity", perplexity)
 		fmt.Println("ticktime", tickTime, "ms")
 		fmt.Println("medianPerplexity", medianPerplexity)
+		fmt.Println("solverStats", solverStats)
 	}
 
 	costStruct.G = nil // prevent leak
@@ -268,9 +274,9 @@ func main() {
 	state.InitVocab(state.DataSentences, 1) // takes count threshold for characters
 	state.InitModel()
 	// checking memory leaks
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
+	// go func() {
+	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
+	// }()
 
 	tick(&state)
 }

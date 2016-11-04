@@ -34,8 +34,8 @@ func (state *TrainingState) ForwardIndex(G *Graph, ix int, prev CellMemory) Cell
 	modwil := state.Model["Wil"]
 	x := G.RowPluck(&modwil, ix)
 	// forward prop the sequence learner
-	outputMemory := ForwardLSTM(G, state.Model, state.HiddenSizes, x, prev)
-
+	model, outputMemory := ForwardLSTM(G, state.Model, state.HiddenSizes, x, prev)
+	state.Model = model
 	G = nil // avoid leaks
 
 	return outputMemory
