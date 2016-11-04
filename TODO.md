@@ -2,5 +2,5 @@
 
 x perplexity does not change between sessions
 - no output comes from predictions
-- seems to be problem with m2 being totally empty
-- try changing to no longer use pointers, if possible, and just do copies.
+    - the pointers do not appear to work even close to how they work in JS
+    - during backprop functions, need to be able to assign back the updated values to the matrix.
