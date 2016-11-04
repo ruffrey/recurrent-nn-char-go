@@ -44,7 +44,7 @@ func (g *Graph) Backward() {
 /*
 RowPluck plucks a row of m with index `ix` and returns it as col vector.
 */
-func (g *Graph) RowPluck(m *Mat, ix int) Mat {
+func (g *Graph) RowPluck(m Mat, ix int) Mat {
 	Assert(ix >= 0 && ix < m.RowCount, "RowPluck invalid number of rows")
 
 	d := m.ColumnCount
@@ -60,11 +60,8 @@ func (g *Graph) RowPluck(m *Mat, ix int) Mat {
 			for j := 0; j < n; j++ {
 				m.DW[d*ix+j] += out.DW[j]
 			}
-			m = nil // avoid leaks
 		}
 		g.AddBackprop(backpropRowPluck)
-	} else {
-		m = nil // avoid leaks
 	}
 
 	return out
@@ -73,7 +70,7 @@ func (g *Graph) RowPluck(m *Mat, ix int) Mat {
 /*
 Tanh does tanh nonlinearity
 */
-func (g *Graph) Tanh(m *Mat) Mat {
+func (g *Graph) Tanh(m Mat) Mat {
 	out := NewMat(m.RowCount, m.ColumnCount)
 	n := len(m.W)
 	for ix := 0; ix < n; ix++ {
@@ -87,11 +84,8 @@ func (g *Graph) Tanh(m *Mat) Mat {
 				mwi := out.W[i]
 				m.DW[i] += (1.0 - mwi*mwi) * out.DW[i]
 			}
-			m = nil // avoid leaks
 		}
 		g.AddBackprop(backpropTahn)
-	} else {
-		m = nil // avoid leaks
 	}
 	return out
 }
@@ -99,7 +93,7 @@ func (g *Graph) Tanh(m *Mat) Mat {
 /*
 Sigmoid does sigmoid things.
 */
-func (g *Graph) Sigmoid(m *Mat) Mat {
+func (g *Graph) Sigmoid(m Mat) Mat {
 	// sigmoid nonlinearity
 	out := NewMat(m.RowCount, m.ColumnCount)
 	n := len(m.W)
@@ -114,11 +108,8 @@ func (g *Graph) Sigmoid(m *Mat) Mat {
 				mwi := out.W[i]
 				m.DW[i] += mwi * (1.0 - mwi) * out.DW[i]
 			}
-			m = nil // avoid leaks
 		}
 		g.AddBackprop(backpropSigmoid)
-	} else {
-		m = nil // avoid leaks
 	}
 
 	return out
@@ -127,7 +118,7 @@ func (g *Graph) Sigmoid(m *Mat) Mat {
 /*
 Relu does something
 */
-func (g *Graph) Relu(m *Mat) Mat {
+func (g *Graph) Relu(m Mat) Mat {
 	out := NewMat(m.RowCount, m.ColumnCount)
 	n := len(m.W)
 	for ix := 0; ix < n; ix++ {
@@ -140,11 +131,8 @@ func (g *Graph) Relu(m *Mat) Mat {
 					m.DW[i] += out.DW[i]
 				}
 			}
-			m = nil // avoid leaks
 		}
 		g.AddBackprop(backpropRelu)
-	} else {
-		m = nil // avoid leaks
 	}
 
 	return out
@@ -153,7 +141,7 @@ func (g *Graph) Relu(m *Mat) Mat {
 /*
 Mul multiplies two matrices
 */
-func (g *Graph) Mul(m1 *Mat, m2 *Mat) Mat {
+func (g *Graph) Mul(m1 Mat, m2 Mat) Mat {
 	Assert(m1.ColumnCount == m2.RowCount, "matmul dimensions misaligned")
 
 	n := m1.RowCount
@@ -184,13 +172,8 @@ func (g *Graph) Mul(m1 *Mat, m2 *Mat) Mat {
 					}
 				}
 			}
-			m1 = nil // avoid leaks
-			m2 = nil // avoid leaks
 		}
 		g.AddBackprop(backpropMul)
-	} else {
-		m1 = nil // avoid leaks
-		m2 = nil // avoid leaks
 	}
 	return out
 }
@@ -198,7 +181,7 @@ func (g *Graph) Mul(m1 *Mat, m2 *Mat) Mat {
 /*
 Add adds two matrices
 */
-func (g *Graph) Add(m1 *Mat, m2 *Mat) Mat {
+func (g *Graph) Add(m1 Mat, m2 Mat) Mat {
 	Assert(len(m1.W) == len(m2.W), "Cannot add arrays")
 
 	out := NewMat(m1.RowCount, m1.ColumnCount)
@@ -215,13 +198,8 @@ func (g *Graph) Add(m1 *Mat, m2 *Mat) Mat {
 				m1.DW[i] += out.DW[i]
 				m2.DW[i] += out.DW[i]
 			}
-			m1 = nil // avoid leaks
-			m2 = nil // avoid leaks
 		}
 		g.AddBackprop(backpropAdd)
-	} else {
-		m1 = nil // avoid leaks
-		m2 = nil // avoid leaks
 	}
 	return out
 }
@@ -229,7 +207,7 @@ func (g *Graph) Add(m1 *Mat, m2 *Mat) Mat {
 /*
 Eltmul does something with multiplication
 */
-func (g *Graph) Eltmul(m1 *Mat, m2 *Mat) Mat {
+func (g *Graph) Eltmul(m1 Mat, m2 Mat) Mat {
 	Assert(len(m1.W) == len(m2.W), "Cannot Eltmul")
 
 	out := NewMat(m1.RowCount, m1.ColumnCount)
@@ -245,13 +223,8 @@ func (g *Graph) Eltmul(m1 *Mat, m2 *Mat) Mat {
 				m1.DW[i] += m2.W[i] * out.DW[i]
 				m2.DW[i] += m1.W[i] * out.DW[i]
 			}
-			m1 = nil // avoid leaks
-			m2 = nil // avoid leaks
 		}
 		g.AddBackprop(backpropEtlmul)
-	} else {
-		m1 = nil // avoid leaks
-		m2 = nil // avoid leaks
 	}
 
 	return out

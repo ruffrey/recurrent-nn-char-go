@@ -32,7 +32,7 @@ ForwardIndex forwards the index
 */
 func (state *TrainingState) ForwardIndex(G *Graph, ix int, prev CellMemory) CellMemory {
 	modwil := state.Model["Wil"]
-	x := G.RowPluck(&modwil, ix)
+	x := G.RowPluck(modwil, ix)
 	// forward prop the sequence learner
 	model, outputMemory := ForwardLSTM(G, state.Model, state.HiddenSizes, x, prev)
 	state.Model = model

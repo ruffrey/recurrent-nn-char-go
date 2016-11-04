@@ -104,53 +104,41 @@ func ForwardLSTM(G *Graph, model Model, hiddenSizes []int, x Mat, prev CellMemor
 		ds := strconv.Itoa(d)
 
 		// input gate
-		wixds := model["Wix"+ds]
-		h0 := G.Mul(&wixds, &inputVector)
-		wihds := model["Wih"+ds]
-		h1 := G.Mul(&wihds, &hiddenPrev)
-		add1 := G.Add(&h0, &h1)
-		bids := model["bi"+ds]
-		add2 := G.Add(&add1, &bids)
-		inputGate := G.Sigmoid(&add2)
+		h0 := G.Mul(model["Wix"+ds], inputVector)
+		h1 := G.Mul(model["Wih"+ds], hiddenPrev)
+		add1 := G.Add(h0, h1)
+		add2 := G.Add(add1, model["bi"+ds])
+		inputGate := G.Sigmoid(add2)
 
 		// forget gate
-		wfxds := model["Wfx"+ds]
-		h2 := G.Mul(&wfxds, &inputVector)
-		wfhds := model["Wfh"+ds]
-		h3 := G.Mul(&wfhds, &hiddenPrev)
-		add3 := G.Add(&h2, &h3)
-		bfds := model["bf"+ds]
-		add4 := G.Add(&add3, &bfds)
-		forgetGate := G.Sigmoid(&add4)
+		h2 := G.Mul(model["Wfx"+ds], inputVector)
+		h3 := G.Mul(model["Wfh"+ds], hiddenPrev)
+		add3 := G.Add(h2, h3)
+		add4 := G.Add(add3, model["bf"+ds])
+		forgetGate := G.Sigmoid(add4)
 
 		// output gate
-		woxds := model["Wox"+ds]
-		h4 := G.Mul(&woxds, &inputVector)
-		wohds := model["Woh"+ds]
-		h5 := G.Mul(&wohds, &hiddenPrev)
-		bods := model["bo"+ds]
-		add45 := G.Add(&h4, &h5)
-		add45bods := G.Add(&add45, &bods)
-		outputGate := G.Sigmoid(&add45bods)
+		h4 := G.Mul(model["Wox"+ds], inputVector)
+		h5 := G.Mul(model["Woh"+ds], hiddenPrev)
+		add45 := G.Add(h4, h5)
+		add45bods := G.Add(add45, model["bo"+ds])
+		outputGate := G.Sigmoid(add45bods)
 
 		// write operation on cells
-		wcxds := model["Wcx"+ds]
-		h6 := G.Mul(&wcxds, &inputVector)
-		wchds := model["Wch"+ds]
-		h7 := G.Mul(&wchds, &hiddenPrev)
-		add67 := G.Add(&h6, &h7)
-		bcds := model["bc"+ds]
-		add67bcds := G.Add(&add67, &bcds)
-		cellWrite := G.Tanh(&add67bcds)
+		h6 := G.Mul(model["Wcx"+ds], inputVector)
+		h7 := G.Mul(model["Wch"+ds], hiddenPrev)
+		add67 := G.Add(h6, h7)
+		add67bcds := G.Add(add67, model["bc"+ds])
+		cellWrite := G.Tanh(add67bcds)
 
 		// compute new cell activation
-		retainCell := G.Eltmul(&forgetGate, &cellPrev) // what do we keep from cell
-		writeCell := G.Eltmul(&inputGate, &cellWrite)  // what do we write to cell
-		cellD := G.Add(&retainCell, &writeCell)        // new cell contents
+		retainCell := G.Eltmul(forgetGate, cellPrev) // what do we keep from cell
+		writeCell := G.Eltmul(inputGate, cellWrite)  // what do we write to cell
+		cellD := G.Add(retainCell, writeCell)        // new cell contents
 
 		// compute hidden state as gated, saturated cell activations
-		tahncellD := G.Tanh(&cellD)
-		hiddenD := G.Eltmul(&outputGate, &tahncellD)
+		tahncellD := G.Tanh(cellD)
+		hiddenD := G.Eltmul(outputGate, tahncellD)
 
 		hidden = append(hidden, hiddenD)
 		cell = append(cell, cellD)
@@ -159,10 +147,8 @@ func ForwardLSTM(G *Graph, model Model, hiddenSizes []int, x Mat, prev CellMemor
 	}
 
 	// one decoder to outputs at end
-	whd := model["Whd"]
-	bd := model["bd"]
-	whdlasthidden := G.Mul(&whd, &hidden[len(hidden)-1])
-	output := G.Add(&whdlasthidden, &bd)
+	whdlasthidden := G.Mul(model["Whd"], hidden[len(hidden)-1])
+	output := G.Add(whdlasthidden, model["bd"])
 
 	G = nil // avoid leaks
 
