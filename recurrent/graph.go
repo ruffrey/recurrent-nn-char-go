@@ -35,8 +35,8 @@ func (g *Graph) AddBackprop(f func()) {
 Backward runs all backpropagation functions, in order.
 */
 func (g *Graph) Backward() {
-	for _, fn := range g.Backprop {
-		fn()
+	for i := len(g.Backprop) - 1; i >= 0; i-- {
+		g.Backprop[i]()
 	}
 	g.Backprop = nil
 }
