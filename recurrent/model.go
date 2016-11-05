@@ -65,7 +65,6 @@ x is 1D column vector with observation
 prev is a struct containing hidden and cell
 from previous iteration
 
-This may be causing leaks
 */
 func ForwardLSTM(G *Graph, model Model, hiddenSizes []int, x Mat, prev CellMemory) (Model, CellMemory) {
 	var hiddenPrevs []Mat
