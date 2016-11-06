@@ -30,15 +30,6 @@ type TrainingState struct {
 }
 
 /*
-ForwardIndex forwards the index
-*/
-func (state *TrainingState) ForwardIndex(ix int, prev CellMemory) CellMemory {
-	x := state.G.RowPluck(state.Model["Wil"], ix)
-	// forward prop the sequence learner
-	return state.ForwardLSTM(state.HiddenSizes, x, prev)
-}
-
-/*
 InitVocab helps initialize this instance's vocab array.
 */
 func (state *TrainingState) InitVocab(sents []string, countThreshold int) {
@@ -104,6 +95,15 @@ func utilAddToModel(modelto Model, modelfrom Model) {
 }
 
 /*
+ForwardIndex forwards the index
+*/
+func (state *TrainingState) ForwardIndex(ix int, prev CellMemory) CellMemory {
+	x := state.G.RowPluck(state.Model["Wil"], ix)
+	// forward prop the sequence learner
+	return state.ForwardLSTM(state.HiddenSizes, x, prev)
+}
+
+/*
 ForwardLSTM does things
 forward prop for a single tick of LSTM
 
@@ -112,7 +112,6 @@ model contains LSTM parameters
 x is 1D column vector with observation
 prev is a struct containing hidden and cell
 from previous iteration
-
 */
 func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x Mat, prev CellMemory) CellMemory {
 	var hiddenPrevs []Mat
