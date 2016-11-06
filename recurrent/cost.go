@@ -21,8 +21,9 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 
 	var ixSource int
 	var ixTarget int
-	prev := CellMemory{}
-	var probswixtarget float64
+	var prev *CellMemory
+	initial := CellMemory{}
+	prev = &initial
 	var probs Mat
 
 	// loop through each letter of the selected sentence
@@ -43,23 +44,27 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 		}
 		// TODO: this is never changing the value, and seems to be the crux of the matter
 		// fmt.Println("before: ", prev)
-		prev = state.ForwardIndex(ixSource, prev)
+		// formerly ForwardIndex. Forward propagate the sequence learner.
+		lh := state.ForwardLSTM(
+			state.HiddenSizes,
+			state.RowPluck(state.Model["Wil"], ixSource),
+			*prev,
+		)
+		prev = &lh
 		// fmt.Println("after: ", prev)
 
 		// set gradients into logprobabilities
-		logrithmicProbabilities := prev.Output    // interpret output as logrithmicProbabilities
-		probs = Softmax(&logrithmicProbabilities) // compute the softmax probabilities
+		// interpret output as logrithmicProbabilities
+		probs = Softmax(&prev.Output) // compute the softmax probabilities
 
-		probswixtarget = probs.W[ixTarget]
-
-		// the following line has a huge leak, apparently.
-		log2ppl += -math.Log2(probswixtarget) // accumulate base 2 log prob and do smoothing
-		cost += -math.Log2(probswixtarget)
+		// the following line has a huge leak, apparently. (still true?)
+		log2ppl += -math.Log2(probs.W[ixTarget]) // accumulate base 2 log prob and do smoothing
+		cost += -math.Log2(probs.W[ixTarget])
 
 		// write gradients into log probabilities
-		// TODO: this is not woring
-		logrithmicProbabilities.DW = probs.W
-		logrithmicProbabilities.DW[ixTarget]--
+		// TODO: this is not working
+		prev.Output.DW = probs.W
+		prev.Output.DW[ixTarget]--
 	}
 
 	ppl := math.Pow(2, log2ppl/float64(n-1))

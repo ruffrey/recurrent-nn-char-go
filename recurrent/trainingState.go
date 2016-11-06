@@ -96,15 +96,6 @@ func utilAddToModel(modelto Model, modelfrom Model) {
 }
 
 /*
-ForwardIndex forwards the index
-*/
-func (state *TrainingState) ForwardIndex(ix int, prev CellMemory) CellMemory {
-	x := state.RowPluck(state.Model["Wil"], ix)
-	// forward prop the sequence learner
-	return state.ForwardLSTM(state.HiddenSizes, x, prev)
-}
-
-/*
 ForwardLSTM does things
 forward prop for a single tick of LSTM
 
@@ -252,20 +243,26 @@ PredictSentence creates a prediction based on the current training state. simila
 */
 func (state *TrainingState) PredictSentence(samplei bool, temperature float64, maxCharsGenerate int) (s string) {
 	state.ResetBackprop(false)
-	prev := CellMemory{}
+	var prev *CellMemory
+	initial := CellMemory{}
+	prev = &initial
 	var lh CellMemory
 
 	for len(s) < maxCharsGenerate {
 		// RNN tick
-		var ix int
+		var ixSource int
 		if len(s) == 0 {
-			ix = 0
+			ixSource = 0
 		} else {
-			ix = state.LetterToIndex[string(s[len(s)-1])]
+			ixSource = state.LetterToIndex[string(s[len(s)-1])]
 		}
 
-		lh = state.ForwardIndex(ix, prev)
-		prev = lh
+		state.ForwardLSTM(
+			state.HiddenSizes,
+			state.RowPluck(state.Model["Wil"], ixSource),
+			*prev,
+		)
+		prev = &lh
 
 		// sample predicted letter
 		logrithmicProbabilities := lh.Output
@@ -284,19 +281,19 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float64, m
 		probs := Softmax(&logrithmicProbabilities)
 
 		if samplei {
-			ix = SampleArgmaxI(probs.W)
+			ixSource = SampleArgmaxI(probs.W)
 		} else {
-			ix = ArgmaxI(probs.W)
+			ixSource = ArgmaxI(probs.W)
 		}
 
-		if ix == 0 {
+		if ixSource == 0 {
 			break // END token predicted, break out
 		}
 		if len(s) > maxCharsGenerate {
 			break // something is wrong
 		}
 
-		letter := state.IndexToLetter[ix]
+		letter := state.IndexToLetter[ixSource]
 		s += letter
 	}
 
