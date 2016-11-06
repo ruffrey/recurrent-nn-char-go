@@ -165,6 +165,7 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 		cost += -math.Log2(probswixtarget)
 
 		// write gradients into log probabilities
+		// TODO: this is not woring
 		logrithmicProbabilities.DW = probs.W
 		logrithmicProbabilities.DW[ixTarget]--
 	}
@@ -190,7 +191,9 @@ func median(values []float64) float64 {
 
 func tick(state *recurrent.TrainingState) {
 	defer func() {
-		tick(state)
+		if state.TickIterator < 2 {
+			tick(state)
+		}
 	}()
 	// sample sentence from data
 	sentix := recurrent.Randi(0, len(state.DataSentences))
@@ -199,10 +202,13 @@ func tick(state *recurrent.TrainingState) {
 	t0 := time.Now().UnixNano() / 1000000 // log start timestamp ms
 
 	// evaluate cost func on a sentence
+	// TODO: should be different before and after
 	costStruct := costfun(state, sent)
-
 	// use built up graph to compute backprop (set .DW fields in mats)
+	fmt.Println(state.TickIterator, " -- BEFORE Backward:\n  ", state.Model)
 	costStruct.G.Backward()
+	fmt.Println(state.TickIterator, " -- AFTER Backward:\n  ", state.Model)
+
 	// perform param update
 	var solverStats recurrent.SolverStats
 	state.Model, solverStats = solverecurrent.Step(state.Model, learningRate, regc, clipval)
@@ -246,8 +252,8 @@ func tick(state *recurrent.TrainingState) {
 func main() {
 	// Define the hidden layers
 	hiddenSizes = make([]int, 2)
-	hiddenSizes[0] = 20
-	hiddenSizes[1] = 20
+	hiddenSizes[0] = 2
+	hiddenSizes[1] = 2
 
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.

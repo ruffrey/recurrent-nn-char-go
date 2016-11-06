@@ -7,4 +7,8 @@ x perplexity does not change between sessions
     - change the math functions to accept the model key pointing to the Mat, instead of the Mat.
         - have the model on hand and pass it into the backprop funcs.
         - this will make backprop work.
-    - or, pass a function or something to be used during the backprop
+    - oddly, this works:
+        - https://play.golang.org/p/eb2UbhYXzJ
+        - It is changing an array, by passing around a matrix and modifying it
+    - It seems the Backward / Backpropagation does not work. it's like the pointers no longer
+        point to the current model.

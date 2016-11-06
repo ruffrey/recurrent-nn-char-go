@@ -22,13 +22,21 @@ func (m *Mat) toJSON() (string, error) {
 	return string(b[:]), err
 }
 
+func zeros(size int) []float64 {
+	arr := make([]float64, size)
+	for i := 0; i < size; i++ {
+		arr[i] = 0.0
+	}
+	return arr
+}
+
 /*
 NewMat instantiates a new matrix.
 */
 func NewMat(n int, d int) Mat {
 	m := Mat{RowCount: n, ColumnCount: d}
-	m.W = make([]float64, n*d)
-	m.DW = make([]float64, n*d)
+	m.W = zeros(n * d)
+	m.DW = zeros(n * d)
 	return m
 }
 
