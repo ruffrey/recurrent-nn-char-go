@@ -51,136 +51,6 @@ func readFileContents(filename string) (string, error) {
 	return string(buf), nil
 }
 
-// create a prediction based on the current training state
-func predictSentence(state *recurrent.TrainingState, samplei bool, temperature float64) (s string) {
-	state.G = recurrent.NewGraph(false)
-	prev := recurrent.CellMemory{}
-	var lh recurrent.CellMemory
-
-	for len(s) < maxCharsGenerate {
-		// RNN tick
-		var ix int
-		if len(s) == 0 {
-			ix = 0
-		} else {
-			ix = state.LetterToIndex[string(s[len(s)-1])]
-		}
-
-		lh = state.ForwardIndex(ix, prev)
-		prev = lh
-
-		// sample predicted letter
-		logrithmicProbabilities := lh.Output
-		if temperature != 1.0 && samplei {
-			// scale log probabilities by temperature and renormalize
-			// if temperature is high, logrithmicProbabilities will go towards zero
-			// and the softmax outputs will be more diffuse. if temperature is
-			// very low, the softmax outputs will be more peaky
-			q := 0
-			nq := len(logrithmicProbabilities.W)
-			for ; q < nq; q++ {
-				logrithmicProbabilities.W[q] /= temperature
-			}
-		}
-
-		probs := recurrent.Softmax(&logrithmicProbabilities)
-
-		if samplei {
-			ix = recurrent.SampleArgmaxI(probs.W)
-		} else {
-			ix = recurrent.ArgmaxI(probs.W)
-		}
-
-		if ix == 0 {
-			break // END token predicted, break out
-		}
-		if len(s) > maxCharsGenerate {
-			break // something is wrong
-		}
-
-		letter := state.IndexToLetter[ix]
-		s += letter
-	}
-
-	state = nil
-
-	return s
-}
-
-/*
-Cost represents the result of running the cost function.
-*/
-type Cost struct {
-	G    *recurrent.Graph
-	ppl  float64
-	cost float64
-}
-
-/**
- * costfun takes a model and a sentence and
- * calculates the loss. Also returns the Graph
- * object which can be used to do backprop
- */
-func costfun(state *recurrent.TrainingState, sent string) Cost {
-	n := len(sent)
-	G := recurrent.NewGraph(true)
-	var log2ppl float64
-	var cost float64
-
-	var ixSource int
-	var ixTarget int
-	var lh recurrent.CellMemory
-	prev := recurrent.CellMemory{}
-	var probswixtarget float64
-	var probs recurrent.Mat
-
-	// loop through each letter of the selected sentence
-	for i := -1; i < n; i++ {
-		// start and end tokens are zeros
-		// fmt.Println("i=", i, ", n=", n)
-		// first step: start with START token
-		if i == -1 {
-			ixSource = 0
-		} else {
-			ixSource = state.LetterToIndex[string(sent[i])]
-		}
-		// last step: end with END token
-		if i == n-1 {
-			ixTarget = 0
-		} else {
-			ixTarget = state.LetterToIndex[string(sent[i+1])]
-		}
-		// TODO: this is never changing the value
-		// fmt.Println(prev)
-		lh = state.ForwardIndex(ixSource, prev)
-		// fmt.Println(lh)
-		prev = lh
-
-		// set gradients into logprobabilities
-		logrithmicProbabilities := lh.Output                // interpret output as logrithmicProbabilities
-		probs = recurrent.Softmax(&logrithmicProbabilities) // compute the softmax probabilities
-
-		probswixtarget = probs.W[ixTarget]
-
-		// the following line has a huge leak, apparently.
-		log2ppl += -math.Log2(probswixtarget) // accumulate base 2 log prob and do smoothing
-		cost += -math.Log2(probswixtarget)
-
-		// write gradients into log probabilities
-		// TODO: this is not woring
-		logrithmicProbabilities.DW = probs.W
-		logrithmicProbabilities.DW[ixTarget]--
-	}
-
-	ppl := math.Pow(2, log2ppl/float64(n-1))
-
-	return Cost{
-		G:    &G,
-		ppl:  ppl,
-		cost: cost,
-	}
-}
-
 func median(values []float64) float64 {
 	sort.Float64s(values)
 	lenValues := len(values)
@@ -205,21 +75,20 @@ func tick(state *recurrent.TrainingState) {
 
 	// evaluate cost func on a sentence
 	// TODO: should be different before and after
-	costStruct := costfun(state, sent)
+	costStruct := state.CostFunction(sent)
 	// use built up graph to compute backprop (set .DW fields in mats)
 	fmt.Println(state.TickIterator, " -- BEFORE Backward:\n  ", state.Model)
 	costStruct.G.Backward()
 	fmt.Println(state.TickIterator, " -- AFTER Backward:\n  ", state.Model)
 
 	// perform param update
-	var solverStats recurrent.SolverStats
-	state.Model, solverStats = solverecurrent.Step(state.Model, learningRate, regc, clipval)
+	solverStats := state.StepSolver(solverecurrent, learningRate, regc, clipval)
 
 	t1 := time.Now().UnixNano() / 1000000 // ms
 	tickTime := t1 - t0
 
 	// keep track of perplexity between printing progress
-	state.PerplexityList = append(state.PerplexityList, costStruct.ppl)
+	state.PerplexityList = append(state.PerplexityList, costStruct.Ppl)
 
 	// evaluate now and then
 	state.TickIterator++
@@ -229,12 +98,12 @@ func tick(state *recurrent.TrainingState) {
 		fmt.Println("---------------------")
 		// draw samples
 		for q := 0; q < 5; q++ {
-			pred = predictSentence(state, true, sampleSoftmaxTemperature)
+			pred = state.PredictSentence(true, sampleSoftmaxTemperature, maxCharsGenerate)
 			fmt.Println("prediction", pred)
 		}
 
 		epoch := (float32(state.TickIterator) / float32(state.EpochSize))
-		perplexity := costStruct.ppl
+		perplexity := costStruct.Ppl
 		medianPerplexity := median(state.PerplexityList)
 		state.PerplexityList = make([]float64, 0)
 

@@ -2,6 +2,7 @@ package recurrent
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -107,8 +108,6 @@ func (state *TrainingState) ForwardIndex(ix int, prev CellMemory) CellMemory {
 ForwardLSTM does things
 forward prop for a single tick of LSTM
 
-G is graph to append ops to
-model contains LSTM parameters
 x is 1D column vector with observation
 prev is a struct containing hidden and cell
 from previous iteration
@@ -202,4 +201,106 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x Mat, prev CellMemor
 		Cell:   cell,
 		Output: output,
 	}
+}
+
+/*
+StepSolver does a step.
+Should model be a poiner? unable to loop over it if not. So we return it and then copy it back
+onto the existing model.
+*/
+func (state *TrainingState) StepSolver(solver Solver, stepSize float64, regc float64, clipval float64) SolverStats {
+	// perform parameter update
+	solverStats := SolverStats{}
+	numClipped := 0.0
+	numTot := 0.0
+
+	for k, m := range state.Model {
+		_, hasKey := solver.StepCache[k]
+		if !hasKey {
+			solver.StepCache[k] = NewMat(m.RowCount, m.ColumnCount)
+		}
+
+		i := 0
+		n := len(m.W)
+		for ; i < n; i++ {
+			// rmsprop adaptive learning rate
+			mdwi := m.DW[i]
+			solver.StepCache[k].W[i] = solver.StepCache[k].W[i]*solver.DecayRate + (1.0-solver.DecayRate)*mdwi*mdwi
+
+			// gradient clip
+			if mdwi > clipval {
+				mdwi = clipval
+				numClipped++
+			}
+			if mdwi < -clipval {
+				mdwi = -clipval
+				numClipped++
+			}
+			numTot++
+
+			// update (and regularize)
+			m.W[i] += -stepSize*mdwi/math.Sqrt(solver.StepCache[k].W[i]+solver.SmoothEPS) - regc*m.W[i]
+			m.DW[i] = 0 // reset gradients for next iteration
+		}
+	}
+	solverStats["ratio_clipped"] = numClipped * 1.0 / numTot
+	return solverStats
+}
+
+/*
+PredictSentence creates a prediction based on the current training state. similar to cost function.
+*/
+func (state *TrainingState) PredictSentence(samplei bool, temperature float64, maxCharsGenerate int) (s string) {
+	state.G = NewGraph(false)
+	prev := CellMemory{}
+	var lh CellMemory
+
+	for len(s) < maxCharsGenerate {
+		// RNN tick
+		var ix int
+		if len(s) == 0 {
+			ix = 0
+		} else {
+			ix = state.LetterToIndex[string(s[len(s)-1])]
+		}
+
+		lh = state.ForwardIndex(ix, prev)
+		prev = lh
+
+		// sample predicted letter
+		logrithmicProbabilities := lh.Output
+		if temperature != 1.0 && samplei {
+			// scale log probabilities by temperature and renormalize
+			// if temperature is high, logrithmicProbabilities will go towards zero
+			// and the softmax outputs will be more diffuse. if temperature is
+			// very low, the softmax outputs will be more peaky
+			q := 0
+			nq := len(logrithmicProbabilities.W)
+			for ; q < nq; q++ {
+				logrithmicProbabilities.W[q] /= temperature
+			}
+		}
+
+		probs := Softmax(&logrithmicProbabilities)
+
+		if samplei {
+			ix = SampleArgmaxI(probs.W)
+		} else {
+			ix = ArgmaxI(probs.W)
+		}
+
+		if ix == 0 {
+			break // END token predicted, break out
+		}
+		if len(s) > maxCharsGenerate {
+			break // something is wrong
+		}
+
+		letter := state.IndexToLetter[ix]
+		s += letter
+	}
+
+	state = nil
+
+	return s
 }
