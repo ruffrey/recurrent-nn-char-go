@@ -6,7 +6,6 @@ import "math"
 Cost represents the result of running the cost function.
 */
 type Cost struct {
-	G    *Graph
 	Ppl  float64
 	Cost float64
 }
@@ -16,13 +15,12 @@ CostFunction takes a model and a sentence and calculates the loss.
 */
 func (state *TrainingState) CostFunction(sent string) Cost {
 	n := len(sent)
-	G := NewGraph(true)
+	state.ResetBackprop(true)
 	var log2ppl float64
 	var cost float64
 
 	var ixSource int
 	var ixTarget int
-	var lh CellMemory
 	prev := CellMemory{}
 	var probswixtarget float64
 	var probs Mat
@@ -43,14 +41,13 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 		} else {
 			ixTarget = state.LetterToIndex[string(sent[i+1])]
 		}
-		// TODO: this is never changing the value
-		// fmt.Println(prev)
-		lh = state.ForwardIndex(ixSource, prev)
-		// fmt.Println(lh)
-		prev = lh
+		// TODO: this is never changing the value, and seems to be the crux of the matter
+		// fmt.Println("before: ", prev)
+		prev = state.ForwardIndex(ixSource, prev)
+		// fmt.Println("after: ", prev)
 
 		// set gradients into logprobabilities
-		logrithmicProbabilities := lh.Output      // interpret output as logrithmicProbabilities
+		logrithmicProbabilities := prev.Output    // interpret output as logrithmicProbabilities
 		probs = Softmax(&logrithmicProbabilities) // compute the softmax probabilities
 
 		probswixtarget = probs.W[ixTarget]
@@ -68,7 +65,6 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 	ppl := math.Pow(2, log2ppl/float64(n-1))
 
 	return Cost{
-		G:    &G,
 		Ppl:  ppl,
 		Cost: cost,
 	}

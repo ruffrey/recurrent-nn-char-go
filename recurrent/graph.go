@@ -13,15 +13,11 @@ type Graph struct {
 }
 
 /*
-NewGraph instantiates a new Graph
+ResetBackprop instantiates a new Graph
 */
-func NewGraph(needsBackprop bool) Graph {
-	g := Graph{
-		NeedsBackprop: needsBackprop,
-		Backprop:      make([]backprop, 0),
-	}
-
-	return g
+func (g *Graph) ResetBackprop(needsBackprop bool) {
+	g.NeedsBackprop = needsBackprop
+	g.Backprop = make([]backprop, 0)
 }
 
 /*

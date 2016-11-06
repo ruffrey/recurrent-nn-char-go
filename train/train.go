@@ -75,11 +75,11 @@ func tick(state *recurrent.TrainingState) {
 
 	// evaluate cost func on a sentence
 	// TODO: should be different before and after
+	fmt.Println(state.TickIterator, " -- BEFORE CostFunction:\n  ", state.Model)
 	costStruct := state.CostFunction(sent)
+	fmt.Println(state.TickIterator, " -- AFTER CostFunction:\n  ", state.Model)
 	// use built up graph to compute backprop (set .DW fields in mats)
-	fmt.Println(state.TickIterator, " -- BEFORE Backward:\n  ", state.Model)
-	costStruct.G.Backward()
-	fmt.Println(state.TickIterator, " -- AFTER Backward:\n  ", state.Model)
+	state.Backward()
 
 	// perform param update
 	solverStats := state.StepSolver(solverecurrent, learningRate, regc, clipval)

@@ -12,10 +12,10 @@ TrainingState is the representation of the training data which gets saved or loa
 to disk between sessions.
 */
 type TrainingState struct {
+	Graph
 	HiddenSizes    []int
 	LetterSize     int
 	Model          Model
-	G              Graph
 	Solver         Solver
 	LetterToIndex  map[string]int
 	IndexToLetter  map[int]string
@@ -99,7 +99,7 @@ func utilAddToModel(modelto Model, modelfrom Model) {
 ForwardIndex forwards the index
 */
 func (state *TrainingState) ForwardIndex(ix int, prev CellMemory) CellMemory {
-	x := state.G.RowPluck(state.Model["Wil"], ix)
+	x := state.RowPluck(state.Model["Wil"], ix)
 	// forward prop the sequence learner
 	return state.ForwardLSTM(state.HiddenSizes, x, prev)
 }
@@ -149,41 +149,41 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x Mat, prev CellMemor
 		ds := strconv.Itoa(d)
 
 		// input gate
-		h0 := state.G.Mul(state.Model["Wix"+ds], inputVector)
-		h1 := state.G.Mul(state.Model["Wih"+ds], hiddenPrev)
-		add1 := state.G.Add(h0, h1)
-		add2 := state.G.Add(add1, state.Model["bi"+ds])
-		inputGate := state.G.Sigmoid(add2)
+		h0 := state.Mul(state.Model["Wix"+ds], inputVector)
+		h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
+		add1 := state.Add(h0, h1)
+		add2 := state.Add(add1, state.Model["bi"+ds])
+		inputGate := state.Sigmoid(add2)
 
 		// forget gate
-		h2 := state.G.Mul(state.Model["Wfx"+ds], inputVector)
-		h3 := state.G.Mul(state.Model["Wfh"+ds], hiddenPrev)
-		add3 := state.G.Add(h2, h3)
-		add4 := state.G.Add(add3, state.Model["bf"+ds])
-		forgetGate := state.G.Sigmoid(add4)
+		h2 := state.Mul(state.Model["Wfx"+ds], inputVector)
+		h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
+		add3 := state.Add(h2, h3)
+		add4 := state.Add(add3, state.Model["bf"+ds])
+		forgetGate := state.Sigmoid(add4)
 
 		// output gate
-		h4 := state.G.Mul(state.Model["Wox"+ds], inputVector)
-		h5 := state.G.Mul(state.Model["Woh"+ds], hiddenPrev)
-		add45 := state.G.Add(h4, h5)
-		add45bods := state.G.Add(add45, state.Model["bo"+ds])
-		outputGate := state.G.Sigmoid(add45bods)
+		h4 := state.Mul(state.Model["Wox"+ds], inputVector)
+		h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
+		add45 := state.Add(h4, h5)
+		add45bods := state.Add(add45, state.Model["bo"+ds])
+		outputGate := state.Sigmoid(add45bods)
 
 		// write operation on cells
-		h6 := state.G.Mul(state.Model["Wcx"+ds], inputVector)
-		h7 := state.G.Mul(state.Model["Wch"+ds], hiddenPrev)
-		add67 := state.G.Add(h6, h7)
-		add67bcds := state.G.Add(add67, state.Model["bc"+ds])
-		cellWrite := state.G.Tanh(add67bcds)
+		h6 := state.Mul(state.Model["Wcx"+ds], inputVector)
+		h7 := state.Mul(state.Model["Wch"+ds], hiddenPrev)
+		add67 := state.Add(h6, h7)
+		add67bcds := state.Add(add67, state.Model["bc"+ds])
+		cellWrite := state.Tanh(add67bcds)
 
 		// compute new cell activation
-		retainCell := state.G.Eltmul(forgetGate, cellPrev) // what do we keep from cell
-		writeCell := state.G.Eltmul(inputGate, cellWrite)  // what do we write to cell
-		cellD := state.G.Add(retainCell, writeCell)        // new cell contents
+		retainCell := state.Eltmul(forgetGate, cellPrev) // what do we keep from cell
+		writeCell := state.Eltmul(inputGate, cellWrite)  // what do we write to cell
+		cellD := state.Add(retainCell, writeCell)        // new cell contents
 
 		// compute hidden state as gated, saturated cell activations
-		tahncellD := state.G.Tanh(cellD)
-		hiddenD := state.G.Eltmul(outputGate, tahncellD)
+		tahncellD := state.Tanh(cellD)
+		hiddenD := state.Eltmul(outputGate, tahncellD)
 
 		hidden = append(hidden, hiddenD)
 		cell = append(cell, cellD)
@@ -192,8 +192,8 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x Mat, prev CellMemor
 	}
 
 	// one decoder to outputs at end
-	whdlasthidden := state.G.Mul(state.Model["Whd"], hidden[len(hidden)-1])
-	output := state.G.Add(whdlasthidden, state.Model["bd"])
+	whdlasthidden := state.Mul(state.Model["Whd"], hidden[len(hidden)-1])
+	output := state.Add(whdlasthidden, state.Model["bd"])
 
 	// return cell memory, hidden representation and output
 	return CellMemory{
@@ -251,7 +251,7 @@ func (state *TrainingState) StepSolver(solver Solver, stepSize float64, regc flo
 PredictSentence creates a prediction based on the current training state. similar to cost function.
 */
 func (state *TrainingState) PredictSentence(samplei bool, temperature float64, maxCharsGenerate int) (s string) {
-	state.G = NewGraph(false)
+	state.ResetBackprop(false)
 	prev := CellMemory{}
 	var lh CellMemory
 
