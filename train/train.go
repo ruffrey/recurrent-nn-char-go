@@ -51,9 +51,11 @@ func readFileContents(filename string) (string, error) {
 	return string(buf), nil
 }
 
+// create a prediction based on the current training state
 func predictSentence(state *recurrent.TrainingState, samplei bool, temperature float64) (s string) {
-	G := recurrent.NewGraph(false)
+	state.G = recurrent.NewGraph(false)
 	prev := recurrent.CellMemory{}
+	var lh recurrent.CellMemory
 
 	for len(s) < maxCharsGenerate {
 		// RNN tick
@@ -64,7 +66,7 @@ func predictSentence(state *recurrent.TrainingState, samplei bool, temperature f
 			ix = state.LetterToIndex[string(s[len(s)-1])]
 		}
 
-		lh := state.ForwardIndex(&G, ix, prev)
+		lh = state.ForwardIndex(ix, prev)
 		prev = lh
 
 		// sample predicted letter
@@ -84,9 +86,9 @@ func predictSentence(state *recurrent.TrainingState, samplei bool, temperature f
 		probs := recurrent.Softmax(&logrithmicProbabilities)
 
 		if samplei {
-			ix = recurrent.Samplei(probs.W)
+			ix = recurrent.SampleArgmaxI(probs.W)
 		} else {
-			ix = recurrent.Maxi(probs.W)
+			ix = recurrent.ArgmaxI(probs.W)
 		}
 
 		if ix == 0 {
@@ -135,7 +137,7 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 	// loop through each letter of the selected sentence
 	for i := -1; i < n; i++ {
 		// start and end tokens are zeros
-
+		// fmt.Println("i=", i, ", n=", n)
 		// first step: start with START token
 		if i == -1 {
 			ixSource = 0
@@ -150,7 +152,7 @@ func costfun(state *recurrent.TrainingState, sent string) Cost {
 		}
 		// TODO: this is never changing the value
 		// fmt.Println(prev)
-		lh = state.ForwardIndex(&G, ixSource, prev)
+		lh = state.ForwardIndex(ixSource, prev)
 		// fmt.Println(lh)
 		prev = lh
 
@@ -244,7 +246,6 @@ func tick(state *recurrent.TrainingState) {
 		fmt.Println("solverStats", solverStats)
 	}
 
-	costStruct.G = nil // prevent leak
 }
 
 // old gradCheck was here.

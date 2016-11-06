@@ -45,11 +45,11 @@ func Softmax(m *Mat) Mat {
 }
 
 /*
-Maxi does something with max and i. maybe integer.
+ArgmaxI does something with max and i. maybe integer.
 
 Old comment: argmax of array w
 */
-func Maxi(w []float64) int {
+func ArgmaxI(w []float64) int {
 	maxv := w[0]
 	maxix := 0
 	i := 1
@@ -65,11 +65,11 @@ func Maxi(w []float64) int {
 }
 
 /*
-Samplei does something with sampling and integers, maybe.
+SampleArgmaxI does something with sampling and integers, maybe.
 
 Old comment: sample argmax from w, assuming w are probabilities that sum to one
 */
-func Samplei(w []float64) int {
+func SampleArgmaxI(w []float64) int {
 	r := Randf(0, 1)
 	x := 0.0
 	i := 0
