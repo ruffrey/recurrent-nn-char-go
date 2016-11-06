@@ -156,7 +156,6 @@ func (g *Graph) Mul(m1 Mat, m2 Mat) Mat {
 	}
 
 	if g.NeedsBackprop {
-		// it is important to not share scope variables from above, as much as possible.
 		backpropMul := func() {
 			b := 0.0
 			for i := 0; i < m1.RowCount; i++ { // loop over rows of m1

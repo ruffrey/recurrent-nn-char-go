@@ -63,8 +63,10 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 
 		// write gradients into log probabilities
 		// TODO: this is not working
-		prev.Output.DW = probs.W
-		prev.Output.DW[ixTarget]--
+		// fmt.Println("before: ", (*prev).Output)
+		(*prev).Output.DW = probs.W
+		(*prev).Output.DW[ixTarget]--
+		// fmt.Println("after: ", (*prev).Output)
 	}
 
 	ppl := math.Pow(2, log2ppl/float64(n-1))

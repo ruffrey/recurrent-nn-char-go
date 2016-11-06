@@ -28,6 +28,8 @@ type TrainingState struct {
 	OutputSize    int
 	DataSentences []string
 	TickIterator  int
+	hiddenPrevs   []Mat
+	cellPrevs     []Mat
 }
 
 /*
@@ -71,7 +73,7 @@ func (state *TrainingState) InitVocab(sents []string, countThreshold int) {
 	state.InputSize = len(state.Vocab)
 	state.OutputSize = len(state.Vocab)
 	state.EpochSize = len(sents)
-	fmt.Println("found", len(state.Vocab), " distinct characters: ", state.Vocab)
+	fmt.Println("Found", len(state.Vocab), " distinct characters: ", state.Vocab)
 }
 
 /*
@@ -96,28 +98,25 @@ func utilAddToModel(modelto Model, modelfrom Model) {
 }
 
 /*
-ForwardLSTM does things
-forward prop for a single tick of LSTM
+ForwardLSTM does forward propagation for a single tick of LSTM. Will be called in a loop.
 
 x is 1D column vector with observation
-prev is a struct containing hidden and cell
-from previous iteration
+prev is a struct containing hidden and cell from previous iteration
 */
 func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x Mat, prev CellMemory) CellMemory {
-	var hiddenPrevs []Mat
-	var cellPrevs []Mat
 
 	// initialize when not yet initialized. we know there will always be hidden layers.
 	if len(prev.Hidden) == 0 {
-		hiddenPrevs = make([]Mat, len(hiddenSizes))
-		cellPrevs = make([]Mat, len(hiddenSizes))
+		// reset these
+		state.hiddenPrevs = make([]Mat, len(hiddenSizes))
+		state.cellPrevs = make([]Mat, len(hiddenSizes))
 		for s := 0; s < len(hiddenSizes); s++ {
-			hiddenPrevs[s] = NewMat(hiddenSizes[s], 1)
-			cellPrevs[s] = NewMat(hiddenSizes[s], 1)
+			state.hiddenPrevs[s] = NewMat(hiddenSizes[s], 1)
+			state.cellPrevs[s] = NewMat(hiddenSizes[s], 1)
 		}
 	} else {
-		hiddenPrevs = prev.Hidden
-		cellPrevs = prev.Cell
+		state.hiddenPrevs = prev.Hidden
+		state.cellPrevs = prev.Cell
 	}
 
 	var hidden []Mat
@@ -133,8 +132,8 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x Mat, prev CellMemor
 		} else {
 			inputVector = hidden[d-1]
 		}
-		hiddenPrev = hiddenPrevs[d]
-		cellPrev = cellPrevs[d]
+		hiddenPrev = state.hiddenPrevs[d]
+		cellPrev = state.cellPrevs[d]
 
 		// ds is the index but as a string
 		ds := strconv.Itoa(d)
@@ -257,7 +256,7 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float64, m
 			ixSource = state.LetterToIndex[string(s[len(s)-1])]
 		}
 
-		state.ForwardLSTM(
+		lh = state.ForwardLSTM(
 			state.HiddenSizes,
 			state.RowPluck(state.Model["Wil"], ixSource),
 			*prev,
