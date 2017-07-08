@@ -131,13 +131,12 @@ func main() {
 	//defer profile.Start(profile.CPUProfile).Stop()
 
 	// Define the hidden layers
-	hiddenSizes = make([]int, 6)
-	hiddenSizes[0] = 40
-	hiddenSizes[1] = 40
-	hiddenSizes[2] = 40
-	hiddenSizes[3] = 40
-	hiddenSizes[4] = 40
-	hiddenSizes[4] = 40
+	hiddenSizes = make([]int, 5)
+	hiddenSizes[0] = 100
+	hiddenSizes[1] = 100
+	hiddenSizes[2] = 100
+	hiddenSizes[3] = 100
+	hiddenSizes[4] = 100
 
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.
