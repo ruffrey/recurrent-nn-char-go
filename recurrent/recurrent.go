@@ -74,8 +74,11 @@ func SampleArgmaxI(w []float64) int {
 	x := 0.0
 	i := 0
 
-	for ; x > r; x += w[i] {
-		i++
+	for {
+		x += w[i]
+		if x > r {
+			return i
+		}
 	}
-	return i
+	return len(w) - 1
 }

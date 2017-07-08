@@ -248,7 +248,7 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float64, m
 	prev = initial
 	var lh *CellMemory
 
-	for len(s) < maxCharsGenerate {
+	for {
 		// RNN tick
 		var ixSource int
 		if len(s) == 0 {
