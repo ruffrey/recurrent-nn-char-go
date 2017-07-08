@@ -2,14 +2,14 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"sort"
 	"strings"
 	"time"
-	"os"
 	"encoding/json"
+	ui "gopkg.in/gizak/termui.v1"
+	"golang.org/x/tools/go/gcimporter15/testdata"
 )
 
 // model parameters
@@ -39,26 +39,61 @@ const maxCharsGenerate = 100
 // should be class because it needs memory for step caches
 var solverecurrent *Solver
 
-func readFileContents(filename string) (string, error) {
-	buf, err := ioutil.ReadFile(filename)
+// old gradCheck was here.
+
+func main() {
+
+	err := ui.Init()
 	if err != nil {
-		return "", err
+		panic(err)
 	}
-	return string(buf), nil
-}
+	defer ui.Close()
 
-func writeFileContents(filename string, contents []byte) (error) {
-	return ioutil.WriteFile(filename, contents, os.ModePerm)
-}
+	primaryTextBox := ui.NewPar(":PRESS q TO QUIT")
+	primaryTextBox.Height = 3
+	primaryTextBox.Width = 50
+	primaryTextBox.TextFgColor = ui.ColorWhite
+	primaryTextBox.Text = "Starting up"
 
-func median(values []float64) float64 {
-	sort.Float64s(values)
-	lenValues := len(values)
-	half := int(math.Floor(float64(lenValues / 2)))
-	if math.Remainder(float64(lenValues), 2) != 0.0 {
-		return values[half]
+	ui.Render(primaryTextBox) // feel free to call Render, it's async and non-block
+
+
+	//defer profile.Start(profile.MemProfile).Stop()
+	//defer profile.Start(profile.CPUProfile).Stop()
+
+	// Define the hidden layers
+	hiddenSizes = make([]int, 3)
+	hiddenSizes[0] = 20
+	hiddenSizes[1] = 20
+	hiddenSizes[2] = 20
+
+	// this is where the training state is held in memory, not in global scope
+	// most importantly, to prevent leaks.
+	// (could also fetch from disk)
+	state := &TrainingState{
+		LetterSize:  5,
+		HiddenSizes: hiddenSizes,
+		EpochSize:   -1,
+		InputSize:   -1,
+		OutputSize:  -1,
 	}
-	return (values[half-1] + values[half]) / 2.0
+
+	state.PerplexityList = make([]float64, 0)
+
+	solverecurrent = NewSolver() // reinit solver
+	state.TickIterator = 0
+
+	// process the input, filter out blanks
+	input, err := readFileContents("/Users/jpx/apollo.txt")
+	if err != nil {
+		log.Fatal("Failed reading file input", err)
+	}
+
+	state.DataSentences = strings.Split(input, "\n")
+	state.InitVocab(state.DataSentences, 1) // takes count threshold for characters
+	state.InitModel()
+
+	tick(state)
 }
 
 func tick(state *TrainingState) {
@@ -89,6 +124,7 @@ func tick(state *TrainingState) {
 		tickTime := t1 - t0
 
 		pred := ""
+		primaryTextBox.
 		fmt.Println("---------------------")
 		// draw samples
 		for q := 0; q < 5; q++ {
@@ -122,43 +158,12 @@ func tick(state *TrainingState) {
 	tick(state)
 }
 
-// old gradCheck was here.
-
-func main() {
-	//defer profile.Start(profile.MemProfile).Stop()
-	//defer profile.Start(profile.CPUProfile).Stop()
-
-	// Define the hidden layers
-	hiddenSizes = make([]int, 3)
-	hiddenSizes[0] = 100
-	hiddenSizes[1] = 100
-	hiddenSizes[2] = 100
-
-	// this is where the training state is held in memory, not in global scope
-	// most importantly, to prevent leaks.
-	// (could also fetch from disk)
-	state := &TrainingState{
-		LetterSize:  5,
-		HiddenSizes: hiddenSizes,
-		EpochSize:   -1,
-		InputSize:   -1,
-		OutputSize:  -1,
+func median(values []float64) float64 {
+	sort.Float64s(values)
+	lenValues := len(values)
+	half := int(math.Floor(float64(lenValues / 2)))
+	if math.Remainder(float64(lenValues), 2) != 0.0 {
+		return values[half]
 	}
-
-	state.PerplexityList = make([]float64, 0)
-
-	solverecurrent = NewSolver() // reinit solver
-	state.TickIterator = 0
-
-	// process the input, filter out blanks
-	input, err := readFileContents("/Users/jpx/apollo.txt")
-	if err != nil {
-		log.Fatal("Failed reading file input", err)
-	}
-
-	state.DataSentences = strings.Split(input, "\n")
-	state.InitVocab(state.DataSentences, 1) // takes count threshold for characters
-	state.InitModel()
-
-	tick(state)
+	return (values[half-1] + values[half]) / 2.0
 }
