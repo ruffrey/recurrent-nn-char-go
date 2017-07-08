@@ -127,6 +127,8 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *Mat, prev *CellMem
 	var hiddenPrev *Mat
 	var cellPrev *Mat
 
+	// TODO: parallize this hot path, which is tricky because it
+	// relies on the previous array value.
 	for d := 0; d < len(hiddenSizes); d++ {
 
 		if d == 0 {
@@ -179,8 +181,6 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *Mat, prev *CellMem
 
 		hidden = append(hidden, hiddenD)
 		cell = append(cell, cellD)
-
-		// TODO: clear pointer leaks?
 	}
 
 	// one decoder to outputs at end
@@ -204,9 +204,10 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc fl
 	// perform parameter update
 	solverStats := SolverStats{}
 	numClipped := 0.0
+	var clipMux sync.Mutex
 	numTot := 0.0
+	var totMux sync.Mutex
 
-	var mux sync.Mutex
 	var wg sync.WaitGroup
 
 	for key, mod := range state.Model {
@@ -217,13 +218,16 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc fl
 		}
 		solver.mux.Unlock()
 
-		f := 0
-		n := len(mod.W)
-		for ; f < n; f++ {
-			wg.Add(1)
-			// pass in the current iteration stuff to concurrently process
-			// without referencing the wrong value
-			go (func(k string, m *Mat, i int) {
+		wg.Add(1)
+		// Pass in the current iteration stuff to concurrently process
+		// without referencing the wrong value.
+		// Having this lower down in the for loop nest did not seem to
+		// speed things up, due to increased overhead of tracking
+		// goroutines by the runtime.
+		go (func(k string, m *Mat) {
+			i := 0
+			n := len(m.W)
+			for ; i < n; i++ {
 				// rmsprop adaptive learning rate
 				mdwi := m.DW[i]
 				solver.mux.Lock()
@@ -233,19 +237,19 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc fl
 				// gradient clip
 				if mdwi > clipval {
 					mdwi = clipval
-					mux.Lock()
+					clipMux.Lock()
 					numClipped++
-					mux.Unlock()
+					clipMux.Unlock()
 				}
 				if mdwi < -clipval {
 					mdwi = -clipval
-					mux.Lock()
+					clipMux.Lock()
 					numClipped++
-					mux.Unlock()
+					clipMux.Unlock()
 				}
-				mux.Lock()
+				totMux.Lock()
 				numTot++
-				mux.Unlock()
+				totMux.Unlock()
 
 				// update (and regularize)
 				solver.mux.Lock()
@@ -253,10 +257,9 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc fl
 				solver.mux.Unlock()
 				m.W[i] += -stepSize*mdwi/math.Sqrt(kwi+solver.SmoothEPS) - regc*m.W[i]
 				m.DW[i] = 0 // reset gradients for next iteration
-
-				wg.Done()
-			})(key, mod, f)
-		}
+			}
+			wg.Done()
+		})(key, mod)
 	}
 	wg.Wait()
 

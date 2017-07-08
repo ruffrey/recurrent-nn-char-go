@@ -12,6 +12,7 @@ import (
 	//"github.com/pkg/profile"
 	"os"
 	"encoding/json"
+	"github.com/pkg/profile"
 )
 
 // model parameters
@@ -132,9 +133,9 @@ func main() {
 
 	// Define the hidden layers
 	hiddenSizes = make([]int, 3)
-	hiddenSizes[0] = 50
-	hiddenSizes[1] = 50
-	hiddenSizes[2] = 50
+	hiddenSizes[0] = 100
+	hiddenSizes[1] = 100
+	hiddenSizes[2] = 100
 
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.
