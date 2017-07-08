@@ -110,7 +110,7 @@ func tick(state *recurrent.TrainingState) {
 		fmt.Println("solverStats", solverStats)
 	}
 
-	if math.Remainder(epoch, 1) < 0.01 {
+	if math.Remainder(epoch, 1) == 0 {
 		fname := fmt.Sprintf("save-%f.json", epoch)
 		fmt.Println("Saving progress", fname)
 		jsonState, err := json.Marshal(state)
@@ -134,12 +134,13 @@ func main() {
 	//defer profile.Start(profile.CPUProfile).Stop()
 
 	// Define the hidden layers
-	hiddenSizes = make([]int, 5)
-	hiddenSizes[0] = 30
-	hiddenSizes[1] = 30
-	hiddenSizes[2] = 30
-	hiddenSizes[3] = 30
-	hiddenSizes[4] = 30
+	hiddenSizes = make([]int, 6)
+	hiddenSizes[0] = 40
+	hiddenSizes[1] = 40
+	hiddenSizes[2] = 40
+	hiddenSizes[3] = 40
+	hiddenSizes[4] = 40
+	hiddenSizes[4] = 40
 
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.
