@@ -1,4 +1,4 @@
-package recurrent
+package main
 
 import (
 	"fmt"

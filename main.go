@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
-	"github.com/ruffrey/recurrent-nn-char-go/recurrent"
 	"sort"
 	"strings"
 	"time"
@@ -19,7 +18,7 @@ var hiddenSizes []int
 
 // optimization
 // L2 regularization strength
-const regc = 0.000001
+var regc = 0.000001
 const learningRate = 0.01
 
 // clip gradients at this value
@@ -38,7 +37,7 @@ const maxCharsGenerate = 100
 // various global var inits
 
 // should be class because it needs memory for step caches
-var solverecurrent *recurrent.Solver
+var solverecurrent *Solver
 
 func readFileContents(filename string) (string, error) {
 	buf, err := ioutil.ReadFile(filename)
@@ -62,9 +61,9 @@ func median(values []float64) float64 {
 	return (values[half-1] + values[half]) / 2.0
 }
 
-func tick(state *recurrent.TrainingState) {
+func tick(state *TrainingState) {
 	// sample sentence from data
-	sentix := recurrent.Randi(0, len(state.DataSentences))
+	sentix := Randi(0, len(state.DataSentences))
 	sent := state.DataSentences[sentix]
 
 	t0 := time.Now().UnixNano() / 1000000 // log start timestamp ms
@@ -138,7 +137,7 @@ func main() {
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.
 	// (could also fetch from disk)
-	state := &recurrent.TrainingState{
+	state := &TrainingState{
 		LetterSize:  5,
 		HiddenSizes: hiddenSizes,
 		EpochSize:   -1,
@@ -148,11 +147,11 @@ func main() {
 
 	state.PerplexityList = make([]float64, 0)
 
-	solverecurrent = recurrent.NewSolver() // reinit solver
+	solverecurrent = NewSolver() // reinit solver
 	state.TickIterator = 0
 
 	// process the input, filter out blanks
-	input, err := readFileContents("apollo.txt")
+	input, err := readFileContents("data/apollo.txt")
 	if err != nil {
 		log.Fatal("Failed reading file input", err)
 	}

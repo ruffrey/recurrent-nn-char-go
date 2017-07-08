@@ -1,4 +1,14 @@
-train/train
+# built executables
+recurrent-nn-char-go
+ricur
+
+# IDE files
 *.debug
 .idea
+
+# debugging
 *.pdf
+
+# no test data
+data/*
+!data/shakespeare.txt
