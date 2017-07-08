@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 	"encoding/json"
-	ui "gopkg.in/gizak/termui.v1"
-	"golang.org/x/tools/go/gcimporter15/testdata"
 )
 
 // model parameters
@@ -42,22 +40,6 @@ var solverecurrent *Solver
 // old gradCheck was here.
 
 func main() {
-
-	err := ui.Init()
-	if err != nil {
-		panic(err)
-	}
-	defer ui.Close()
-
-	primaryTextBox := ui.NewPar(":PRESS q TO QUIT")
-	primaryTextBox.Height = 3
-	primaryTextBox.Width = 50
-	primaryTextBox.TextFgColor = ui.ColorWhite
-	primaryTextBox.Text = "Starting up"
-
-	ui.Render(primaryTextBox) // feel free to call Render, it's async and non-block
-
-
 	//defer profile.Start(profile.MemProfile).Stop()
 	//defer profile.Start(profile.CPUProfile).Stop()
 
@@ -124,7 +106,6 @@ func tick(state *TrainingState) {
 		tickTime := t1 - t0
 
 		pred := ""
-		primaryTextBox.
 		fmt.Println("---------------------")
 		// draw samples
 		for q := 0; q < 5; q++ {
