@@ -9,10 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
-	//"github.com/pkg/profile"
 	"os"
 	"encoding/json"
-	"github.com/pkg/profile"
 )
 
 // model parameters
@@ -129,7 +127,7 @@ func tick(state *recurrent.TrainingState) {
 
 func main() {
 	//defer profile.Start(profile.MemProfile).Stop()
-	defer profile.Start(profile.CPUProfile).Stop()
+	//defer profile.Start(profile.CPUProfile).Stop()
 
 	// Define the hidden layers
 	hiddenSizes = make([]int, 3)
