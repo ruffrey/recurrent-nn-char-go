@@ -5,20 +5,16 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
-	// "net/http"
-	// _ "net/http/pprof"
-	"recurrent/recurrent"
+	"github.com/ruffrey/recurrent-nn-char-go/recurrent"
 	"sort"
 	"strings"
 	"time"
+	//"github.com/pkg/profile"
 )
 
 // model parameters
 // list of sizes of hidden layers
 var hiddenSizes []int
-
-// size of letter embeddings
-var letterSize = 5
 
 // optimization
 // L2 regularization strength
@@ -102,7 +98,7 @@ func tick(state *recurrent.TrainingState) {
 			fmt.Println("prediction", pred)
 		}
 
-		epoch := (float32(state.TickIterator) / float32(state.EpochSize))
+		epoch := float32(state.TickIterator) / float32(state.EpochSize)
 		perplexity := costStruct.Ppl
 		medianPerplexity := median(state.PerplexityList)
 		state.PerplexityList = make([]float64, 0)
@@ -120,6 +116,9 @@ func tick(state *recurrent.TrainingState) {
 // old gradCheck was here.
 
 func main() {
+	//defer profile.Start(profile.MemProfile).Stop()
+	//defer profile.Start(profile.CPUProfile).Stop()
+
 	// Define the hidden layers
 	hiddenSizes = make([]int, 2)
 	hiddenSizes[0] = 2
@@ -128,7 +127,8 @@ func main() {
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.
 	// (could also fetch from disk)
-	state := recurrent.TrainingState{
+	state := &recurrent.TrainingState{
+		LetterSize:  5,
 		HiddenSizes: hiddenSizes,
 		EpochSize:   -1,
 		InputSize:   -1,
@@ -149,10 +149,6 @@ func main() {
 	state.DataSentences = strings.Split(input, "\n")
 	state.InitVocab(state.DataSentences, 1) // takes count threshold for characters
 	state.InitModel()
-	// checking memory leaks
-	// go func() {
-	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
-	// }()
 
-	tick(&state)
+	tick(state)
 }

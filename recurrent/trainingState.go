@@ -14,6 +14,7 @@ to disk between sessions.
 type TrainingState struct {
 	Graph
 	HiddenSizes    []int
+	// LetterSize is the size of letter embeddings
 	LetterSize     int
 	Model          Model
 	Solver         Solver
@@ -103,7 +104,7 @@ ForwardLSTM does forward propagation for a single tick of LSTM. Will be called i
 x is 1D column vector with observation
 prev is a struct containing hidden and cell from previous iteration
 */
-func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x Mat, prev CellMemory) CellMemory {
+func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x Mat, prev *CellMemory) *CellMemory {
 
 	// initialize when not yet initialized. we know there will always be hidden layers.
 	if len(prev.Hidden) == 0 {
@@ -186,10 +187,10 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x Mat, prev CellMemor
 	output := state.Add(whdlasthidden, state.Model["bd"])
 
 	// return cell memory, hidden representation and output
-	return CellMemory{
+	return &CellMemory{
 		Hidden: hidden,
 		Cell:   cell,
-		Output: output,
+		Output: &output,
 	}
 }
 
@@ -243,9 +244,9 @@ PredictSentence creates a prediction based on the current training state. simila
 func (state *TrainingState) PredictSentence(samplei bool, temperature float64, maxCharsGenerate int) (s string) {
 	state.ResetBackprop(false)
 	var prev *CellMemory
-	initial := CellMemory{}
-	prev = &initial
-	var lh CellMemory
+	initial := &CellMemory{}
+	prev = initial
+	var lh *CellMemory
 
 	for len(s) < maxCharsGenerate {
 		// RNN tick
@@ -259,9 +260,9 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float64, m
 		lh = state.ForwardLSTM(
 			state.HiddenSizes,
 			state.RowPluck(state.Model["Wil"], ixSource),
-			*prev,
+			prev,
 		)
-		prev = &lh
+		prev = lh
 
 		// sample predicted letter
 		logrithmicProbabilities := lh.Output
@@ -277,7 +278,7 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float64, m
 			}
 		}
 
-		probs := Softmax(&logrithmicProbabilities)
+		probs := Softmax(logrithmicProbabilities)
 
 		if samplei {
 			ixSource = SampleArgmaxI(probs.W)
@@ -295,8 +296,6 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float64, m
 		letter := state.IndexToLetter[ixSource]
 		s += letter
 	}
-
-	state = nil
 
 	return s
 }

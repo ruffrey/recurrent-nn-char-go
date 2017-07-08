@@ -13,7 +13,7 @@ CellMemory is apparently passed around during foward LSTM sessions.
 type CellMemory struct {
 	Hidden []Mat
 	Cell   []Mat
-	Output Mat
+	Output *Mat
 }
 
 /*

@@ -48,14 +48,14 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 		lh := state.ForwardLSTM(
 			state.HiddenSizes,
 			state.RowPluck(state.Model["Wil"], ixSource),
-			*prev,
+			prev,
 		)
-		prev = &lh
+		prev = lh
 		// fmt.Println("after: ", prev)
 
 		// set gradients into logprobabilities
 		// interpret output as logrithmicProbabilities
-		probs = Softmax(&prev.Output) // compute the softmax probabilities
+		probs = Softmax(prev.Output) // compute the softmax probabilities
 
 		// the following line has a huge leak, apparently. (still true?)
 		log2ppl += -math.Log2(probs.W[ixTarget]) // accumulate base 2 log prob and do smoothing
@@ -64,8 +64,8 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 		// write gradients into log probabilities
 		// TODO: this is not working
 		// fmt.Println("before: ", (*prev).Output)
-		(*prev).Output.DW = probs.W
-		(*prev).Output.DW[ixTarget]--
+		prev.Output.DW = probs.W
+		prev.Output.DW[ixTarget]--
 		// fmt.Println("after: ", (*prev).Output)
 	}
 
