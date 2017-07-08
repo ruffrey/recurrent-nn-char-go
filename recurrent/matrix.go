@@ -33,17 +33,17 @@ func zeros(size int) []float64 {
 /*
 NewMat instantiates a new matrix.
 */
-func NewMat(n int, d int) Mat {
+func NewMat(n int, d int) *Mat {
 	m := Mat{RowCount: n, ColumnCount: d}
 	m.W = zeros(n * d)
 	m.DW = zeros(n * d)
-	return m
+	return &m
 }
 
 /*
 RandMat fills a Mat with random numbers and returns it.
 */
-func RandMat(n int, d int, mu int, std float64) Mat {
+func RandMat(n int, d int, mu int, std float64) *Mat {
 	m := NewMat(n, d)
 	last := len(m.W)
 

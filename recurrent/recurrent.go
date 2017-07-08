@@ -16,7 +16,7 @@ func Assert(assertion bool, msg string) {
 /*
 Softmax computes the softmax of a matrix, I guess.
 */
-func Softmax(m *Mat) Mat {
+func Softmax(m *Mat) *Mat {
 	out := NewMat(m.RowCount, m.ColumnCount) // probability volume
 	maxval := -999999.0
 	i := 0

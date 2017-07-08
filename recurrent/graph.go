@@ -42,7 +42,7 @@ func (g *Graph) Backward() {
 /*
 RowPluck plucks a row of m with index `ix` and returns it as col vector.
 */
-func (g *Graph) RowPluck(m Mat, ix int) Mat {
+func (g *Graph) RowPluck(m *Mat, ix int) *Mat {
 	Assert(ix >= 0 && ix < m.RowCount, "RowPluck invalid number of rows")
 
 	d := m.ColumnCount
@@ -68,7 +68,7 @@ func (g *Graph) RowPluck(m Mat, ix int) Mat {
 /*
 Tanh does tanh nonlinearity
 */
-func (g *Graph) Tanh(m Mat) Mat {
+func (g *Graph) Tanh(m *Mat) *Mat {
 	out := NewMat(m.RowCount, m.ColumnCount)
 	n := len(m.W)
 	for ix := 0; ix < n; ix++ {
@@ -91,7 +91,7 @@ func (g *Graph) Tanh(m Mat) Mat {
 /*
 Sigmoid does sigmoid things.
 */
-func (g *Graph) Sigmoid(m Mat) Mat {
+func (g *Graph) Sigmoid(m *Mat) *Mat {
 	// sigmoid nonlinearity
 	out := NewMat(m.RowCount, m.ColumnCount)
 	n := len(m.W)
@@ -116,7 +116,7 @@ func (g *Graph) Sigmoid(m Mat) Mat {
 /*
 Relu does something
 */
-func (g *Graph) Relu(m Mat) Mat {
+func (g *Graph) Relu(m *Mat) *Mat {
 	out := NewMat(m.RowCount, m.ColumnCount)
 	n := len(m.W)
 	for ix := 0; ix < n; ix++ {
@@ -139,7 +139,7 @@ func (g *Graph) Relu(m Mat) Mat {
 /*
 Mul multiplies two matrices
 */
-func (g *Graph) Mul(m1 Mat, m2 Mat) Mat {
+func (g *Graph) Mul(m1 *Mat, m2 *Mat) *Mat {
 	Assert(m1.ColumnCount == m2.RowCount, "matmul dimensions misaligned")
 
 	n := m1.RowCount
@@ -178,7 +178,7 @@ func (g *Graph) Mul(m1 Mat, m2 Mat) Mat {
 /*
 Add adds two matrices
 */
-func (g *Graph) Add(m1 Mat, m2 Mat) Mat {
+func (g *Graph) Add(m1 *Mat, m2 *Mat) *Mat {
 	Assert(len(m1.W) == len(m2.W), "Cannot add arrays")
 
 	out := NewMat(m1.RowCount, m1.ColumnCount)
@@ -204,7 +204,7 @@ func (g *Graph) Add(m1 Mat, m2 Mat) Mat {
 /*
 Eltmul does something with multiplication
 */
-func (g *Graph) Eltmul(m1 Mat, m2 Mat) Mat {
+func (g *Graph) Eltmul(m1 *Mat, m2 *Mat) *Mat {
 	Assert(len(m1.W) == len(m2.W), "Cannot Eltmul")
 
 	out := NewMat(m1.RowCount, m1.ColumnCount)

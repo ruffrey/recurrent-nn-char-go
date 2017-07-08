@@ -6,7 +6,7 @@ Solver is a solver
 type Solver struct {
 	DecayRate float64
 	SmoothEPS float64
-	StepCache map[string]Mat
+	StepCache map[string]*Mat
 }
 
 /*
@@ -21,7 +21,7 @@ func NewSolver() Solver {
 	s := Solver{
 		DecayRate: 0.999,
 		SmoothEPS: 1e-8,
-		StepCache: make(map[string]Mat),
+		StepCache: make(map[string]*Mat),
 	}
 	return s
 }

@@ -29,8 +29,8 @@ type TrainingState struct {
 	OutputSize    int
 	DataSentences []string
 	TickIterator  int
-	hiddenPrevs   []Mat
-	cellPrevs     []Mat
+	hiddenPrevs   []*Mat
+	cellPrevs     []*Mat
 }
 
 /*
@@ -104,13 +104,13 @@ ForwardLSTM does forward propagation for a single tick of LSTM. Will be called i
 x is 1D column vector with observation
 prev is a struct containing hidden and cell from previous iteration
 */
-func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x Mat, prev *CellMemory) *CellMemory {
+func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *Mat, prev *CellMemory) *CellMemory {
 
 	// initialize when not yet initialized. we know there will always be hidden layers.
 	if len(prev.Hidden) == 0 {
 		// reset these
-		state.hiddenPrevs = make([]Mat, len(hiddenSizes))
-		state.cellPrevs = make([]Mat, len(hiddenSizes))
+		state.hiddenPrevs = make([]*Mat, len(hiddenSizes))
+		state.cellPrevs = make([]*Mat, len(hiddenSizes))
 		for s := 0; s < len(hiddenSizes); s++ {
 			state.hiddenPrevs[s] = NewMat(hiddenSizes[s], 1)
 			state.cellPrevs[s] = NewMat(hiddenSizes[s], 1)
@@ -120,11 +120,11 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x Mat, prev *CellMemo
 		state.cellPrevs = prev.Cell
 	}
 
-	var hidden []Mat
-	var cell []Mat
-	var inputVector Mat
-	var hiddenPrev Mat
-	var cellPrev Mat
+	var hidden []*Mat
+	var cell []*Mat
+	var inputVector *Mat
+	var hiddenPrev *Mat
+	var cellPrev *Mat
 
 	for d := 0; d < len(hiddenSizes); d++ {
 
@@ -190,7 +190,7 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x Mat, prev *CellMemo
 	return &CellMemory{
 		Hidden: hidden,
 		Cell:   cell,
-		Output: &output,
+		Output: output,
 	}
 }
 

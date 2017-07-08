@@ -5,14 +5,14 @@ import "strconv"
 /*
 Model is the graph model.
 */
-type Model map[string]Mat
+type Model map[string]*Mat
 
 /*
 CellMemory is apparently passed around during foward LSTM sessions.
 */
 type CellMemory struct {
-	Hidden []Mat
-	Cell   []Mat
+	Hidden []*Mat
+	Cell   []*Mat
 	Output *Mat
 }
 
