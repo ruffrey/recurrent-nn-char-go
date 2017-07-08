@@ -286,8 +286,8 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float64, m
 			ixSource = ArgmaxI(probs.W)
 		}
 
-		if ixSource == 0 {
-			break // END token predicted, break out
+		if ixSource == 0 || ixSource == len(probs.W) {
+			break // start or end token predicted, break out
 		}
 		if len(s) > maxCharsGenerate {
 			break // something is wrong

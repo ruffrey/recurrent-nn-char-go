@@ -1,6 +1,8 @@
 package recurrent
 
-import "math"
+import (
+	"math"
+)
 
 /*
 Cost represents the result of running the cost function.
@@ -42,8 +44,6 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 		} else {
 			ixTarget = state.LetterToIndex[string(sent[i+1])]
 		}
-		// TODO: this is never changing the value, and seems to be the crux of the matter
-		// fmt.Println("before: ", prev)
 		// formerly ForwardIndex. Forward propagate the sequence learner.
 		lh := state.ForwardLSTM(
 			state.HiddenSizes,
@@ -51,13 +51,15 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 			prev,
 		)
 		prev = lh
-		// fmt.Println("after: ", prev)
 
 		// set gradients into logprobabilities
 		// interpret output as logrithmicProbabilities
 		probs = Softmax(prev.Output) // compute the softmax probabilities
 
-		// the following line has a huge leak, apparently. (still true?)
+		// all done? END?
+		if (len(probs.W) - 1) < ixTarget {
+			break
+		}
 		log2ppl += -math.Log2(probs.W[ixTarget]) // accumulate base 2 log prob and do smoothing
 		cost += -math.Log(probs.W[ixTarget])
 

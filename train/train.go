@@ -58,11 +58,6 @@ func median(values []float64) float64 {
 }
 
 func tick(state *recurrent.TrainingState) {
-	defer func() {
-		// if state.TickIterator < 2 {
-		tick(state)
-		// }
-	}()
 	// sample sentence from data
 	sentix := recurrent.Randi(0, len(state.DataSentences))
 	sent := state.DataSentences[sentix]
@@ -111,6 +106,7 @@ func tick(state *recurrent.TrainingState) {
 		fmt.Println("solverStats", solverStats)
 	}
 
+	tick(state)
 }
 
 // old gradCheck was here.
