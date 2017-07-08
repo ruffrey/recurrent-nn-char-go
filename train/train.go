@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 	//"github.com/pkg/profile"
+	"os"
+	"encoding/json"
 )
 
 // model parameters
@@ -47,6 +49,10 @@ func readFileContents(filename string) (string, error) {
 	return string(buf), nil
 }
 
+func writeFileContents(filename string, contents []byte) (error) {
+	return ioutil.WriteFile(filename, contents, os.ModePerm)
+}
+
 func median(values []float64) float64 {
 	sort.Float64s(values)
 	lenValues := len(values)
@@ -81,6 +87,8 @@ func tick(state *recurrent.TrainingState) {
 	// evaluate now and then
 	state.TickIterator++
 
+	epoch := float64(state.TickIterator) / float64(state.EpochSize)
+
 	if math.Remainder(float64(state.TickIterator), 300) == 0 {
 		t1 := time.Now().UnixNano() / 1000000 // ms
 		tickTime := t1 - t0
@@ -93,8 +101,6 @@ func tick(state *recurrent.TrainingState) {
 			fmt.Println(pred)
 		}
 		fmt.Println("---------------------")
-
-		epoch := float32(state.TickIterator) / float32(state.EpochSize)
 		medianPerplexity := median(state.PerplexityList)
 		state.PerplexityList = make([]float64, 0)
 
@@ -102,6 +108,20 @@ func tick(state *recurrent.TrainingState) {
 		fmt.Println("ticktime", tickTime, "ms")
 		fmt.Println("medianPerplexity", medianPerplexity)
 		fmt.Println("solverStats", solverStats)
+	}
+
+	if math.Remainder(epoch, 1) < 0.01 {
+		fname := fmt.Sprintf("save-%f.json", epoch)
+		fmt.Println("Saving progress", fname)
+		jsonState, err := json.Marshal(state)
+		if err != nil {
+			fmt.Println("stringify err", err)
+		} else {
+			err = writeFileContents(fname, jsonState)
+			if err != nil {
+				fmt.Println("Save error", err, fname)
+			}
+		}
 	}
 
 	tick(state)
@@ -114,9 +134,12 @@ func main() {
 	//defer profile.Start(profile.CPUProfile).Stop()
 
 	// Define the hidden layers
-	hiddenSizes = make([]int, 2)
-	hiddenSizes[0] = 20
-	hiddenSizes[1] = 20
+	hiddenSizes = make([]int, 5)
+	hiddenSizes[0] = 30
+	hiddenSizes[1] = 30
+	hiddenSizes[2] = 30
+	hiddenSizes[3] = 30
+	hiddenSizes[4] = 30
 
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.
@@ -135,7 +158,7 @@ func main() {
 	state.TickIterator = 0
 
 	// process the input, filter out blanks
-	input, err := readFileContents("input.txt")
+	input, err := readFileContents("apollo.txt")
 	if err != nil {
 		log.Fatal("Failed reading file input", err)
 	}

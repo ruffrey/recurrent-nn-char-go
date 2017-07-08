@@ -27,7 +27,7 @@ type TrainingState struct {
 	EpochSize     int
 	InputSize     int
 	OutputSize    int
-	DataSentences []string
+	DataSentences []string `json:"-"`
 	TickIterator  int
 	hiddenPrevs   []*Mat
 	cellPrevs     []*Mat
