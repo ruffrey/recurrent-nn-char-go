@@ -121,8 +121,8 @@ func main() {
 
 	// Define the hidden layers
 	hiddenSizes = make([]int, 2)
-	hiddenSizes[0] = 2
-	hiddenSizes[1] = 2
+	hiddenSizes[0] = 20
+	hiddenSizes[1] = 20
 
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.
