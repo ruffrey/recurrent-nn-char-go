@@ -1,6 +1,8 @@
 package recurrent
 
-import "math"
+import (
+	"math"
+)
 
 /*
 Assert ensures our code is not breaking down and halts the program.
@@ -79,6 +81,7 @@ func SampleArgmaxI(w []float64) int {
 		if x > r {
 			return i
 		}
+		i++
 	}
 	return len(w) - 1
 }
