@@ -2,6 +2,7 @@ package recurrent
 
 import (
 	"math"
+	"sync"
 )
 
 type backprop func()
@@ -33,9 +34,15 @@ func (g *Graph) AddBackprop(f func()) {
 Backward runs all backpropagation functions, in order.
 */
 func (g *Graph) Backward() {
+	var wg sync.WaitGroup
 	for i := len(g.Backprop) - 1; i >= 0; i-- {
-		g.Backprop[i]()
+		wg.Add(1)
+		go (func(f int) {
+			g.Backprop[f]()
+			wg.Done()
+		})(i)
 	}
+	wg.Wait()
 	g.Backprop = nil
 }
 
