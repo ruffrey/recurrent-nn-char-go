@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 /*
@@ -13,7 +14,7 @@ to disk between sessions.
 */
 type TrainingState struct {
 	Graph
-	HiddenSizes    []int
+	HiddenSizes []int
 	// LetterSize is the size of letter embeddings
 	LetterSize     int
 	Model          Model
@@ -205,35 +206,60 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc fl
 	numClipped := 0.0
 	numTot := 0.0
 
-	for k, m := range state.Model {
-		_, hasKey := solver.StepCache[k]
+	var mux sync.Mutex
+	var wg sync.WaitGroup
+
+	for key, mod := range state.Model {
+		solver.mux.Lock()
+		_, hasKey := solver.StepCache[key]
 		if !hasKey {
-			solver.StepCache[k] = NewMat(m.RowCount, m.ColumnCount)
+			solver.StepCache[key] = NewMat(mod.RowCount, mod.ColumnCount)
 		}
+		solver.mux.Unlock()
 
-		i := 0
-		n := len(m.W)
-		for ; i < n; i++ {
-			// rmsprop adaptive learning rate
-			mdwi := m.DW[i]
-			solver.StepCache[k].W[i] = solver.StepCache[k].W[i]*solver.DecayRate + (1.0-solver.DecayRate)*mdwi*mdwi
+		f := 0
+		n := len(mod.W)
+		for ; f < n; f++ {
+			wg.Add(1)
+			// pass in the current iteration stuff to concurrently process
+			// without referencing the wrong value
+			go (func(k string, m *Mat, i int) {
+				// rmsprop adaptive learning rate
+				mdwi := m.DW[i]
+				solver.mux.Lock()
+				solver.StepCache[k].W[i] = solver.StepCache[k].W[i]*solver.DecayRate + (1.0-solver.DecayRate)*mdwi*mdwi
+				solver.mux.Unlock()
 
-			// gradient clip
-			if mdwi > clipval {
-				mdwi = clipval
-				numClipped++
-			}
-			if mdwi < -clipval {
-				mdwi = -clipval
-				numClipped++
-			}
-			numTot++
+				// gradient clip
+				if mdwi > clipval {
+					mdwi = clipval
+					mux.Lock()
+					numClipped++
+					mux.Unlock()
+				}
+				if mdwi < -clipval {
+					mdwi = -clipval
+					mux.Lock()
+					numClipped++
+					mux.Unlock()
+				}
+				mux.Lock()
+				numTot++
+				mux.Unlock()
 
-			// update (and regularize)
-			m.W[i] += -stepSize*mdwi/math.Sqrt(solver.StepCache[k].W[i]+solver.SmoothEPS) - regc*m.W[i]
-			m.DW[i] = 0 // reset gradients for next iteration
+				// update (and regularize)
+				solver.mux.Lock()
+				kwi := solver.StepCache[k].W[i]
+				solver.mux.Unlock()
+				m.W[i] += -stepSize*mdwi/math.Sqrt(kwi+solver.SmoothEPS) - regc*m.W[i]
+				m.DW[i] = 0 // reset gradients for next iteration
+
+				wg.Done()
+			})(key, mod, f)
 		}
 	}
+	wg.Wait()
+
 	solverStats["ratio_clipped"] = numClipped * 1.0 / numTot
 	return solverStats
 }
@@ -255,7 +281,7 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float64, m
 			ixSource = 0
 		} else {
 			letters := strings.Split(s, "")
-			prevLetter := letters[len(s) - 1]
+			prevLetter := letters[len(s)-1]
 			ixSource = state.LetterToIndex[prevLetter]
 		}
 

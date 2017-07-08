@@ -1,5 +1,7 @@
 package recurrent
 
+import "sync"
+
 /*
 Solver is a solver
 */
@@ -7,6 +9,7 @@ type Solver struct {
 	DecayRate float64
 	SmoothEPS float64
 	StepCache map[string]*Mat
+	mux sync.Mutex
 }
 
 /*
