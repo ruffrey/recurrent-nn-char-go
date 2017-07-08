@@ -10,6 +10,8 @@ import (
 	"gopkg.in/urfave/cli.v1"
 	"os"
 	"github.com/getlantern/errors"
+	"github.com/pkg/profile"
+	"io/ioutil"
 )
 
 // model parameters
@@ -101,20 +103,28 @@ func main() {
 }
 
 func training(inputSeed string, inputFile string, loadFilepath string, saveFilepath string, depthLayers int, cellCount int) (err error) {
-	//defer profile.Start(profile.MemProfile).Stop()
-	//defer profile.Start(profile.CPUProfile).Stop()
+	// cpu profiling via PERF environment flag
+	if profileWhich := os.Getenv("PERF"); profileWhich != "" {
+		if profileWhich == "mem" {
+			defer profile.Start(profile.MemProfile).Stop()
+		} else if profileWhich == "cpu" {
+			defer profile.Start(profile.CPUProfile).Stop()
+		}
+	}
 
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.
 	// (could also fetch from disk)
 	var state *TrainingState
 	if loadFilepath != "" {
-		stringState, err := readFileContents(loadFilepath)
+		s, err := ioutil.ReadFile(loadFilepath)
 		if err != nil {
 			return err
 		}
-		err = json.Unmarshal([]byte(stringState), state)
+		state = &TrainingState{}
+		err = json.Unmarshal(s, state)
 		if err != nil {
+			fmt.Println("state=", state)
 			return err
 		}
 		hiddenSizes = state.HiddenSizes
@@ -160,7 +170,10 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 
 	state.DataSentences = strings.Split(input, "\n")
 	state.InitVocab(state.DataSentences, 1) // takes count threshold for characters
-	state.InitModel()
+
+	if loadFilepath == "" {
+		state.InitModel()
+	}
 
 	tick(state, saveFilepath)
 

@@ -75,7 +75,7 @@ func (state *TrainingState) InitVocab(sents []string, countThreshold int) {
 	state.InputSize = len(state.Vocab)
 	state.OutputSize = len(state.Vocab)
 	state.EpochSize = len(sents)
-	fmt.Println("Found", len(state.Vocab), " distinct characters: ", state.Vocab)
+	fmt.Println(len(state.Vocab), "distinct characters:", state.Vocab)
 }
 
 /*
