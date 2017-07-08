@@ -23,11 +23,8 @@ func (m *Mat) toJSON() (string, error) {
 }
 
 func zeros(size int) []float64 {
-	arr := make([]float64, size)
-	for i := 0; i < size; i++ {
-		arr[i] = 0.0
-	}
-	return arr
+	// no need to initialize zero values
+	return make([]float64, size)
 }
 
 /*

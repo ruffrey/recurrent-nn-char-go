@@ -128,15 +128,13 @@ func tick(state *recurrent.TrainingState) {
 
 func main() {
 	//defer profile.Start(profile.MemProfile).Stop()
-	//defer profile.Start(profile.CPUProfile).Stop()
+	defer profile.Start(profile.CPUProfile).Stop()
 
 	// Define the hidden layers
-	hiddenSizes = make([]int, 5)
-	hiddenSizes[0] = 100
-	hiddenSizes[1] = 100
-	hiddenSizes[2] = 100
-	hiddenSizes[3] = 100
-	hiddenSizes[4] = 100
+	hiddenSizes = make([]int, 3)
+	hiddenSizes[0] = 50
+	hiddenSizes[1] = 50
+	hiddenSizes[2] = 50
 
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.
