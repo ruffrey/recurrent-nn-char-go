@@ -59,7 +59,7 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 
 		// the following line has a huge leak, apparently. (still true?)
 		log2ppl += -math.Log2(probs.W[ixTarget]) // accumulate base 2 log prob and do smoothing
-		cost += -math.Log2(probs.W[ixTarget])
+		cost += -math.Log(probs.W[ixTarget])
 
 		// write gradients into log probabilities
 		// TODO: this is not working
