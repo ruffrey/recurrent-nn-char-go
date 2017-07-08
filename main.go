@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"sort"
 	"strings"
 	"time"
 	"encoding/json"
+	"gopkg.in/urfave/cli.v1"
+	"os"
+	"github.com/getlantern/errors"
 )
 
 // model parameters
@@ -40,25 +42,101 @@ var solverecurrent *Solver
 // old gradCheck was here.
 
 func main() {
+	app := cli.NewApp()
+	app.Name = "ricur: A recurrent neural trainer for general text prediction."
+	app.Commands = []cli.Command{
+		{
+			Name:    "train",
+			Usage:   "Train a neural network",
+			Flags: []cli.Flag {
+				cli.StringFlag{
+					Name: "in",
+					Usage: "File path to input text file (instead of `seed` text)",
+				},
+				cli.StringFlag{
+					Name: "seed",
+					Usage: "Literal input text (instead of `in` file path)",
+				},
+				cli.StringFlag{
+					Name: "load",
+					Usage: "Optional file path to load an existing model",
+				},
+				cli.StringFlag{
+					Name: "save",
+					Value: "model.json",
+					Usage: "File path to save the model",
+				},
+				cli.IntFlag{
+					Name: "depth",
+					Value: 2,
+					Usage: "For a new network, this is how many hidden layers deep it should be",
+				},
+				cli.IntFlag{
+					Name: "cells",
+					Value: 25,
+					Usage: "For a new network, this is how many neurons per hidden layer",
+				},
+			},
+			Action:  func(c *cli.Context) error {
+				return training(
+					c.String("seed"),
+					c.String("in"),
+					c.String("load"),
+					c.String("save"),
+					c.Int("depth"),
+					c.Int("cells"),
+				)
+			},
+		},
+		{
+			Name:    "sample",
+			Usage:   "Run and receive output from an existing neural network",
+			Action:  func(c *cli.Context) error {
+				return nil
+			},
+		},
+	}
+
+	app.Run(os.Args)
+}
+
+func training(inputSeed string, inputFile string, loadFilepath string, saveFilepath string, depthLayers int, cellCount int) (err error) {
 	//defer profile.Start(profile.MemProfile).Stop()
 	//defer profile.Start(profile.CPUProfile).Stop()
-
-	// Define the hidden layers
-	hiddenSizes = make([]int, 3)
-	hiddenSizes[0] = 20
-	hiddenSizes[1] = 20
-	hiddenSizes[2] = 20
 
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.
 	// (could also fetch from disk)
-	state := &TrainingState{
-		LetterSize:  5,
-		HiddenSizes: hiddenSizes,
-		EpochSize:   -1,
-		InputSize:   -1,
-		OutputSize:  -1,
+	var state *TrainingState
+	if loadFilepath != "" {
+		stringState, err := readFileContents(loadFilepath)
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal([]byte(stringState), state)
+		if err != nil {
+			return err
+		}
+		hiddenSizes = state.HiddenSizes
+		fmt.Println("Loaded network", hiddenSizes)
+	} else {
+		// new state
+		// Define the hidden layers
+		hiddenSizes = make([]int, depthLayers)
+		for i := 0; i < depthLayers; i++ {
+			hiddenSizes[i] = cellCount
+		}
+		state = &TrainingState{
+			LetterSize:  5,
+			HiddenSizes: hiddenSizes,
+			EpochSize:   -1,
+			InputSize:   -1,
+			OutputSize:  -1,
+		}
+		fmt.Println("Created new network", hiddenSizes)
 	}
+
+	fmt.Println("HiddenSizes=", hiddenSizes)
 
 	state.PerplexityList = make([]float64, 0)
 
@@ -66,19 +144,30 @@ func main() {
 	state.TickIterator = 0
 
 	// process the input, filter out blanks
-	input, err := readFileContents("/Users/jpx/apollo.txt")
-	if err != nil {
-		log.Fatal("Failed reading file input", err)
+	var input string
+	if inputSeed != "" {
+		input = inputSeed
+	}
+	if inputFile != "" {
+		input, err = readFileContents(inputFile)
+		if err != nil {
+			return err
+		}
+	}
+	if input == "" {
+		return errors.New("Cannot proceed - input text is empty")
 	}
 
 	state.DataSentences = strings.Split(input, "\n")
 	state.InitVocab(state.DataSentences, 1) // takes count threshold for characters
 	state.InitModel()
 
-	tick(state)
+	tick(state, saveFilepath)
+
+	return err
 }
 
-func tick(state *TrainingState) {
+func tick(state *TrainingState, saveFilepath string) {
 	// sample sentence from data
 	sentix := Randi(0, len(state.DataSentences))
 	sent := state.DataSentences[sentix]
@@ -123,28 +212,25 @@ func tick(state *TrainingState) {
 	}
 
 	if math.Remainder(epoch, 1) == 0 {
-		fname := fmt.Sprintf("save-%f.json", epoch)
-		fmt.Println("Saving progress", fname)
+		fmt.Println("Saving progress", saveFilepath)
 		jsonState, err := json.Marshal(state)
 		if err != nil {
 			fmt.Println("stringify err", err)
 		} else {
-			err = writeFileContents(fname, jsonState)
+			err = writeFileContents(saveFilepath, jsonState)
 			if err != nil {
-				fmt.Println("Save error", err, fname)
+				fmt.Println("Save error", err, saveFilepath)
 			}
 		}
 	}
 
-	tick(state)
+	tick(state, saveFilepath)
 }
 
-func median(values []float64) float64 {
+func median(values []float64) (middleValue float64) {
 	sort.Float64s(values)
 	lenValues := len(values)
-	half := int(math.Floor(float64(lenValues / 2)))
-	if math.Remainder(float64(lenValues), 2) != 0.0 {
-		return values[half]
-	}
-	return (values[half-1] + values[half]) / 2.0
+	halfway := int(math.Floor(float64(lenValues / 2)))
+	middleValue = values[halfway]
+	return middleValue
 }

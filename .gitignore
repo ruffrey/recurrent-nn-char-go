@@ -2,6 +2,9 @@
 recurrent-nn-char-go
 ricur
 
+# training files
+*.json
+
 # IDE files
 *.debug
 .idea
