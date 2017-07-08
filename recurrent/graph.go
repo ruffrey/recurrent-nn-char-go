@@ -1,6 +1,8 @@
 package recurrent
 
-import "math"
+import (
+	"math"
+)
 
 type backprop func()
 

@@ -75,32 +75,30 @@ func tick(state *recurrent.TrainingState) {
 	// perform param update
 	solverStats := state.StepSolver(solverecurrent, learningRate, regc, clipval)
 
-	t1 := time.Now().UnixNano() / 1000000 // ms
-	tickTime := t1 - t0
-
 	// keep track of perplexity between printing progress
 	state.PerplexityList = append(state.PerplexityList, costStruct.Ppl)
 
 	// evaluate now and then
 	state.TickIterator++
 
-	if math.Remainder(float64(state.TickIterator), 250) == 0 {
+	if math.Remainder(float64(state.TickIterator), 300) == 0 {
+		t1 := time.Now().UnixNano() / 1000000 // ms
+		tickTime := t1 - t0
+
 		pred := ""
 		fmt.Println("---------------------")
 		// draw samples
 		for q := 0; q < 5; q++ {
 			pred = state.PredictSentence(true, sampleSoftmaxTemperature, maxCharsGenerate)
-			fmt.Println("prediction", pred)
+			fmt.Println(pred)
 		}
+		fmt.Println("---------------------")
 
 		epoch := float32(state.TickIterator) / float32(state.EpochSize)
-		perplexity := costStruct.Ppl
 		medianPerplexity := median(state.PerplexityList)
 		state.PerplexityList = make([]float64, 0)
 
 		fmt.Println("epoch=", epoch)
-		fmt.Println("EpochSize", state.EpochSize)
-		fmt.Println("perplexity", perplexity)
 		fmt.Println("ticktime", tickTime, "ms")
 		fmt.Println("medianPerplexity", medianPerplexity)
 		fmt.Println("solverStats", solverStats)

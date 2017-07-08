@@ -242,7 +242,7 @@ func (state *TrainingState) StepSolver(solver Solver, stepSize float64, regc flo
 PredictSentence creates a prediction based on the current training state. similar to cost function.
 */
 func (state *TrainingState) PredictSentence(samplei bool, temperature float64, maxCharsGenerate int) (s string) {
-	state.ResetBackprop(false)
+	state.NeedsBackprop = false // temporary but do not lose functions
 	var prev *CellMemory
 	initial := &CellMemory{}
 	prev = initial
@@ -254,7 +254,9 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float64, m
 		if len(s) == 0 {
 			ixSource = 0
 		} else {
-			ixSource = state.LetterToIndex[string(s[len(s)-1])]
+			letters := strings.Split(s, "")
+			prevLetter := letters[len(s) - 1]
+			ixSource = state.LetterToIndex[prevLetter]
 		}
 
 		lh = state.ForwardLSTM(
@@ -297,5 +299,6 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float64, m
 		s += letter
 	}
 
+	state.NeedsBackprop = true // temporary but do not lose functions
 	return s
 }
