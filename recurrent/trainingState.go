@@ -199,7 +199,7 @@ StepSolver does a step.
 Should model be a poiner? unable to loop over it if not. So we return it and then copy it back
 onto the existing model.
 */
-func (state *TrainingState) StepSolver(solver Solver, stepSize float64, regc float64, clipval float64) SolverStats {
+func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc float64, clipval float64) SolverStats {
 	// perform parameter update
 	solverStats := SolverStats{}
 	numClipped := 0.0

@@ -17,8 +17,8 @@ type SolverStats map[string]float64
 /*
 NewSolver instantiates a Solver
 */
-func NewSolver() Solver {
-	s := Solver{
+func NewSolver() *Solver {
+	s := &Solver{
 		DecayRate: 0.999,
 		SmoothEPS: 1e-8,
 		StepCache: make(map[string]*Mat),

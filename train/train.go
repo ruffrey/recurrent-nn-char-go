@@ -39,7 +39,7 @@ const maxCharsGenerate = 100
 // various global var inits
 
 // should be class because it needs memory for step caches
-var solverecurrent recurrent.Solver
+var solverecurrent *recurrent.Solver
 
 func readFileContents(filename string) (string, error) {
 	buf, err := ioutil.ReadFile(filename)
