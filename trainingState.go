@@ -13,7 +13,7 @@ TrainingState is the representation of the training data which gets saved or loa
 to disk between sessions.
 */
 type TrainingState struct {
-	Graph
+	Graph `json:"-"`
 	HiddenSizes []int
 	// LetterSize is the size of letter embeddings
 	LetterSize     int

@@ -21,6 +21,7 @@ var hiddenSizes []int
 // optimization
 // L2 regularization strength
 var regc = 0.000001
+
 const learningRate = 0.01
 
 // clip gradients at this value
@@ -48,38 +49,38 @@ func main() {
 	app.Name = "ricur: A recurrent neural trainer for general text prediction."
 	app.Commands = []cli.Command{
 		{
-			Name:    "train",
-			Usage:   "Train a neural network",
-			Flags: []cli.Flag {
+			Name:  "train",
+			Usage: "Train a neural network",
+			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name: "in",
+					Name:  "in",
 					Usage: "File path to input text file (instead of `seed` text)",
 				},
 				cli.StringFlag{
-					Name: "seed",
+					Name:  "seed",
 					Usage: "Literal input text (instead of `in` file path)",
 				},
 				cli.StringFlag{
-					Name: "load",
+					Name:  "load",
 					Usage: "Optional file path to load an existing model",
 				},
 				cli.StringFlag{
-					Name: "save",
+					Name:  "save",
 					Value: "model.json",
 					Usage: "File path to save the model",
 				},
 				cli.IntFlag{
-					Name: "depth",
+					Name:  "depth",
 					Value: 2,
 					Usage: "For a new network, this is how many hidden layers deep it should be",
 				},
 				cli.IntFlag{
-					Name: "cells",
+					Name:  "cells",
 					Value: 25,
 					Usage: "For a new network, this is how many neurons per hidden layer",
 				},
 			},
-			Action:  func(c *cli.Context) error {
+			Action: func(c *cli.Context) error {
 				return training(
 					c.String("seed"),
 					c.String("in"),
@@ -91,9 +92,9 @@ func main() {
 			},
 		},
 		{
-			Name:    "sample",
-			Usage:   "Run and receive output from an existing neural network",
-			Action:  func(c *cli.Context) error {
+			Name:  "sample",
+			Usage: "Run and receive output from an existing neural network",
+			Action: func(c *cli.Context) error {
 				return nil
 			},
 		},
@@ -227,14 +228,16 @@ func tick(state *TrainingState, saveFilepath string) {
 	if math.Remainder(epoch, 1) == 0 {
 		fmt.Println("Saving progress", saveFilepath)
 		jsonState, err := json.Marshal(state)
-		if err != nil {
-			fmt.Println("stringify err", err)
-		} else {
+		go (func() {
+			if err != nil {
+				fmt.Println("stringify err", err)
+				return
+			}
 			err = writeFileContents(saveFilepath, jsonState)
 			if err != nil {
 				fmt.Println("Save error", err, saveFilepath)
 			}
-		}
+		})()
 	}
 
 	tick(state, saveFilepath)
