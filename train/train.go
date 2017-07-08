@@ -24,7 +24,7 @@ const regc = 0.000001
 const learningRate = 0.01
 
 // clip gradients at this value
-const clipval = 3
+const clipval = 5.0
 
 /* */
 
@@ -71,10 +71,7 @@ func tick(state *recurrent.TrainingState) {
 	t0 := time.Now().UnixNano() / 1000000 // log start timestamp ms
 
 	// evaluate cost func on a sentence
-	// TODO: should be different before and after
-	// fmt.Println(state.TickIterator, " -- BEFORE CostFunction:\n  ", state.Model)
 	costStruct := state.CostFunction(sent)
-	// fmt.Println(state.TickIterator, " -- AFTER CostFunction:\n  ", state.Model)
 	// use built up graph to compute backprop (set .DW fields in mats)
 	state.Backward()
 
