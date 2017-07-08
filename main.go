@@ -151,7 +151,7 @@ func main() {
 	state.TickIterator = 0
 
 	// process the input, filter out blanks
-	input, err := readFileContents("data/apollo.txt")
+	input, err := readFileContents("/Users/jpx/apollo.txt")
 	if err != nil {
 		log.Fatal("Failed reading file input", err)
 	}
