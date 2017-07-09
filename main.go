@@ -69,15 +69,9 @@ func main() {
 					Value: "model.json",
 					Usage: "File path to save the model",
 				},
-				cli.IntFlag{
-					Name:  "depth",
-					Value: 2,
-					Usage: "For a new network, this is how many hidden layers deep it should be",
-				},
-				cli.IntFlag{
-					Name:  "cells",
-					Value: 25,
-					Usage: "For a new network, this is how many neurons per hidden layer",
+				cli.IntSliceFlag{
+					Name:  "hidden",
+					Usage: "For a new network, this is how many cells in how many hidden layers. Example: `--hidden={50,30,30,50}`",
 				},
 			},
 			Action: func(c *cli.Context) error {
@@ -86,8 +80,7 @@ func main() {
 					c.String("in"),
 					c.String("load"),
 					c.String("save"),
-					c.Int("depth"),
-					c.Int("cells"),
+					c.IntSlice("hidden"),
 				)
 			},
 		},
@@ -103,7 +96,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-func training(inputSeed string, inputFile string, loadFilepath string, saveFilepath string, depthLayers int, cellCount int) (err error) {
+func training(inputSeed string, inputFile string, loadFilepath string, saveFilepath string, defaultHiddenLayers []int) (err error) {
 	// cpu profiling via PERF environment flag
 	if profileWhich := os.Getenv("PERF"); profileWhich != "" {
 		if profileWhich == "mem" {
@@ -133,10 +126,7 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 	} else {
 		// new state
 		// Define the hidden layers
-		hiddenSizes = make([]int, depthLayers)
-		for i := 0; i < depthLayers; i++ {
-			hiddenSizes[i] = cellCount
-		}
+		hiddenSizes = defaultHiddenLayers
 		state = &TrainingState{
 			LetterSize:  5,
 			HiddenSizes: hiddenSizes,
