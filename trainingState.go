@@ -63,6 +63,10 @@ func (state *TrainingState) InitVocab(sents []string, countThreshold int) {
 	// and END token will be index 0 in the next character softmax
 	q := 1
 	for ch := range d {
+		if len(ch) > 1 {
+			fmt.Println("Dropping char due to size-bounds issue:", ch)
+			continue
+		}
 		if d[ch] >= countThreshold {
 			// add character to vocab
 			state.LetterToIndex[ch] = q
@@ -75,7 +79,7 @@ func (state *TrainingState) InitVocab(sents []string, countThreshold int) {
 	state.InputSize = len(state.Vocab)
 	state.OutputSize = len(state.Vocab)
 	state.EpochSize = len(sents)
-	fmt.Println(len(state.Vocab), "distinct characters:", state.Vocab)
+	fmt.Println(len(state.Vocab), "distinct characters:\n ", state.Vocab)
 }
 
 /*
@@ -196,9 +200,14 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *Mat, prev *CellMem
 }
 
 /*
-StepSolver does a step.
+StepSolver does a param update on the model, increasing or decreasting the weights,
+and clipping the derivative first if necessary.
+
 Should model be a poiner? unable to loop over it if not. So we return it and then copy it back
 onto the existing model.
+
+stepSize is the learningRate
+regc is regularization
 */
 func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, regc float32, clipval float32) {
 	// perform parameter update
@@ -265,7 +274,8 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float32, m
 			ixSource = 0
 		} else {
 			letters := strings.Split(s, "")
-			prevLetter := letters[len(s)-1]
+			prevIndex := len(s)-1
+			prevLetter := letters[prevIndex]
 			ixSource = state.LetterToIndex[prevLetter]
 		}
 

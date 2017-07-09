@@ -15,17 +15,27 @@ import (
 )
 
 // model parameters
-// list of sizes of hidden layers
-var hiddenSizes []int
 
 // optimization
-// L2 regularization strength
-var regc float32 = 0.000001
+/*
+regc is L2 regularization strength, which reduces complexity,
+or helps prevent overfitting.
+original 0.000001
+*/
+var regc float32
 
-const learningRate = 0.01
+/*
+learningRate is how much to increase or decrease weights (AKA stepSize)
+original 0.01
+*/
+var learningRate float32
 
-// clip gradients at this value
-const clipval = 5.0
+/*
+clipval is how high gradients (derivatives) can be maximum before
+they are clipped to this value
+original 5.0
+*/
+var clipval float32
 
 /* */
 
@@ -47,6 +57,11 @@ var solverecurrent *Solver
 func main() {
 	app := cli.NewApp()
 	app.Name = "ricur: A recurrent neural trainer for general text prediction."
+	app.Author = "Jeff H. Parrish"
+	app.Email = "jeffhparrish@gmail.com"
+	app.Copyright = "Copyright (c) 2017 Jeff H. Parrish"
+	app.Version = "0.1.0"
+	app.Usage = ""
 	app.Commands = []cli.Command{
 		{
 			Name:  "train",
@@ -54,25 +69,55 @@ func main() {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "in",
-					Usage: "File path to input text file (instead of `seed` text)",
+					Usage: "Path to input text `file` (instead of --seed)",
 				},
 				cli.StringFlag{
 					Name:  "seed",
-					Usage: "Literal input text (instead of `in` file path)",
+					Usage: "Literal input `text` (instead of `in` file path)",
 				},
 				cli.StringFlag{
 					Name:  "load",
-					Usage: "Optional file path to load an existing model",
+					Usage: "Optional `file` path to load an existing model",
 				},
 				cli.StringFlag{
 					Name:  "save",
 					Value: "model.json",
-					Usage: "File path to save the model",
+					Usage: "(default=model.json) `file` path to save the model",
 				},
 				cli.IntSliceFlag{
 					Name:  "hidden",
-					Usage: "For a new network, this is how many cells in how many hidden layers. Example: `--hidden={50,30,30,50}`",
+					Value: &cli.IntSlice{30,30,30},
+					Usage: "For a new network, this is a representation of hidden layer sizes, where each value in the list is a layer of `int` size. Example: --hidden={100,50,75}",
 				},
+				cli.Float64Flag{
+					Name: "learn",
+					Value: 0.01,
+					Usage: "(optional) Optimization param: `float32` , influences the amount of neuron weight changes",
+				},
+				cli.Float64Flag{
+					Name: "regc",
+					Value: 0.000001,
+					Usage: "(optional) Regularization: `float32` reduces complexity / overfitting",
+				},
+				cli.Float64Flag{
+					Name: "gradmax",
+					Value: 5.0,
+					Usage: "(optional) Gradient Clip: `float32` max value allowed for derivatives of weights before they are capped",
+				},
+			},
+			Before: func(c *cli.Context) error {
+				loadFile := c.String("load")
+				hidden := c.IntSlice("hidden")
+
+				if loadFile == "" && len(hidden) == 0 {
+					return errors.New("The --hidden neuron layers flag is required when creating a new network.")
+				}
+
+				learningRate = float32(c.Float64("learn"))
+				regc = float32(c.Float64("regc"))
+				clipval = float32(c.Float64("gradmax"))
+
+				return nil
 			},
 			Action: func(c *cli.Context) error {
 				return training(
@@ -105,6 +150,10 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 			defer profile.Start(profile.CPUProfile).Stop()
 		}
 	}
+	fmt.Println("Optimization params:")
+	fmt.Println("  learn rate=", learningRate)
+	fmt.Println("  regularization=", regc)
+	fmt.Println("  gradient clip=", clipval)
 
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.
@@ -121,20 +170,18 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 			fmt.Println("state=", state)
 			return err
 		}
-		hiddenSizes = state.HiddenSizes
-		fmt.Println("Loaded network", hiddenSizes)
+		fmt.Println("Loaded network\n ", state.HiddenSizes)
 	} else {
 		// new state
 		// Define the hidden layers
-		hiddenSizes = defaultHiddenLayers
 		state = &TrainingState{
 			LetterSize:  5,
-			HiddenSizes: hiddenSizes,
+			HiddenSizes: defaultHiddenLayers,
 			EpochSize:   -1,
 			InputSize:   -1,
 			OutputSize:  -1,
 		}
-		fmt.Println("Created new network", hiddenSizes)
+		fmt.Println("Created new network\n ", state.HiddenSizes)
 	}
 
 	state.PerplexityList = make([]float64, 0)
