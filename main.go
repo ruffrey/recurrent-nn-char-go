@@ -147,8 +147,6 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 		fmt.Println("Created new network", hiddenSizes)
 	}
 
-	fmt.Println("HiddenSizes=", hiddenSizes)
-
 	state.PerplexityList = make([]float64, 0)
 
 	solverecurrent = NewSolver() // reinit solver
