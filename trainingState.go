@@ -200,24 +200,20 @@ StepSolver does a step.
 Should model be a poiner? unable to loop over it if not. So we return it and then copy it back
 onto the existing model.
 */
-func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc float64, clipval float64) SolverStats {
+func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc float64, clipval float64) {
 	// perform parameter update
-	solverStats := SolverStats{}
-	numClipped := 0.0
-	var clipMux sync.Mutex
-	numTot := 0.0
-	var totMux sync.Mutex
-
 	var wg sync.WaitGroup
 
+	// do this first loop to make sure everything exists
+	// before doing the second loop in parallel
 	for key, mod := range state.Model {
-		solver.mux.Lock()
 		_, hasKey := solver.StepCache[key]
 		if !hasKey {
 			solver.StepCache[key] = NewMat(mod.RowCount, mod.ColumnCount)
 		}
-		solver.mux.Unlock()
+	}
 
+	for key, mod := range state.Model {
 		wg.Add(1)
 		// Pass in the current iteration stuff to concurrently process
 		// without referencing the wrong value.
@@ -230,31 +226,18 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc fl
 			for ; i < n; i++ {
 				// rmsprop adaptive learning rate
 				mdwi := m.DW[i]
-				solver.mux.Lock()
 				solver.StepCache[k].W[i] = solver.StepCache[k].W[i]*solver.DecayRate + (1.0-solver.DecayRate)*mdwi*mdwi
-				solver.mux.Unlock()
 
 				// gradient clip
 				if mdwi > clipval {
 					mdwi = clipval
-					clipMux.Lock()
-					numClipped++
-					clipMux.Unlock()
 				}
 				if mdwi < -clipval {
 					mdwi = -clipval
-					clipMux.Lock()
-					numClipped++
-					clipMux.Unlock()
 				}
-				totMux.Lock()
-				numTot++
-				totMux.Unlock()
 
 				// update (and regularize)
-				solver.mux.Lock()
 				kwi := solver.StepCache[k].W[i]
-				solver.mux.Unlock()
 				m.W[i] += -stepSize*mdwi/math.Sqrt(kwi+solver.SmoothEPS) - regc*m.W[i]
 				m.DW[i] = 0 // reset gradients for next iteration
 			}
@@ -262,9 +245,6 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc fl
 		})(key, mod)
 	}
 	wg.Wait()
-
-	solverStats["ratio_clipped"] = numClipped * 1.0 / numTot
-	return solverStats
 }
 
 /*

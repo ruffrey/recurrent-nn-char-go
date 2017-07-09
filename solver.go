@@ -13,11 +13,6 @@ type Solver struct {
 }
 
 /*
-SolverStats is the result of running the solver.
-*/
-type SolverStats map[string]float64
-
-/*
 NewSolver instantiates a Solver
 */
 func NewSolver() *Solver {

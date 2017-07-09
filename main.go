@@ -194,7 +194,7 @@ func tick(state *TrainingState, saveFilepath string) {
 	state.Backward()
 
 	// perform param update
-	solverStats := state.StepSolver(solverecurrent, learningRate, regc, clipval)
+	state.StepSolver(solverecurrent, learningRate, regc, clipval)
 
 	// keep track of perplexity between printing progress
 	state.PerplexityList = append(state.PerplexityList, costStruct.Ppl)
@@ -222,7 +222,6 @@ func tick(state *TrainingState, saveFilepath string) {
 		fmt.Println("epoch=", epoch)
 		fmt.Println("ticktime", tickTime, "ms")
 		fmt.Println("medianPerplexity", medianPerplexity)
-		fmt.Println("solverStats", solverStats)
 	}
 
 	if math.Remainder(epoch, 1) == 0 {
