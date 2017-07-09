@@ -26,6 +26,7 @@ type TrainingState struct {
 
 	// the following do not need to be persisted between training sessions
 	EpochSize     int
+	lastSaveEpoch int
 	InputSize     int
 	OutputSize    int
 	DataSentences []string `json:"-"`
@@ -247,7 +248,7 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, regc fl
 
 				// update (and regularize)
 				kwi := solver.StepCache[k].W[i]
-				sqrtSumEPS := float32(math.Sqrt(float64(kwi+solver.SmoothEPS)))
+				sqrtSumEPS := float32(math.Sqrt(float64(kwi + solver.SmoothEPS)))
 				m.W[i] += -stepSize*mdwi/sqrtSumEPS - regc*m.W[i]
 				m.DW[i] = 0 // reset gradients for next iteration
 			}
@@ -274,7 +275,7 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float32, m
 			ixSource = 0
 		} else {
 			letters := strings.Split(s, "")
-			prevIndex := len(s)-1
+			prevIndex := len(s) - 1
 			prevLetter := letters[prevIndex]
 			ixSource = state.LetterToIndex[prevLetter]
 		}

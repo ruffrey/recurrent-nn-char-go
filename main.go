@@ -12,6 +12,7 @@ import (
 	"github.com/getlantern/errors"
 	"github.com/pkg/profile"
 	"io/ioutil"
+	"bufio"
 )
 
 // model parameters
@@ -86,33 +87,26 @@ func main() {
 				},
 				cli.IntSliceFlag{
 					Name:  "hidden",
-					Value: &cli.IntSlice{30,30,30},
+					Value: &cli.IntSlice{30, 30, 30},
 					Usage: "For a new network, this is a representation of hidden layer sizes, where each value in the list is a layer of `int` size. Example: --hidden={100,50,75}",
 				},
 				cli.Float64Flag{
-					Name: "learn",
+					Name:  "learn",
 					Value: 0.01,
 					Usage: "(optional) Optimization param: `float32` , influences the amount of neuron weight changes",
 				},
 				cli.Float64Flag{
-					Name: "regc",
+					Name:  "regc",
 					Value: 0.000001,
 					Usage: "(optional) Regularization: `float32` reduces complexity / overfitting",
 				},
 				cli.Float64Flag{
-					Name: "gradmax",
+					Name:  "gradmax",
 					Value: 5.0,
 					Usage: "(optional) Gradient Clip: `float32` max value allowed for derivatives of weights before they are capped",
 				},
 			},
 			Before: func(c *cli.Context) error {
-				loadFile := c.String("load")
-				hidden := c.IntSlice("hidden")
-
-				if loadFile == "" && len(hidden) == 0 {
-					return errors.New("The --hidden neuron layers flag is required when creating a new network.")
-				}
-
 				learningRate = float32(c.Float64("learn"))
 				regc = float32(c.Float64("regc"))
 				clipval = float32(c.Float64("gradmax"))
@@ -120,12 +114,17 @@ func main() {
 				return nil
 			},
 			Action: func(c *cli.Context) error {
+				hidden := c.IntSlice("hidden")
+				if c.IsSet("hidden") {
+					// cut of beginning default if user passed custom
+					hidden = hidden[3:]
+				}
 				return training(
 					c.String("seed"),
 					c.String("in"),
 					c.String("load"),
 					c.String("save"),
-					c.IntSlice("hidden")[3:], // cut of beginning default
+					hidden,
 				)
 			},
 		},
@@ -174,6 +173,9 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 	} else {
 		// new state
 		// Define the hidden layers
+		if len(defaultHiddenLayers) == 0 {
+			return errors.New("Cannot create a new network that is empty")
+		}
 		state = &TrainingState{
 			LetterSize:  5,
 			HiddenSizes: defaultHiddenLayers,
@@ -210,6 +212,8 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 	if loadFilepath == "" {
 		state.InitModel()
 	}
+
+	go listenForCommands(state, saveFilepath)
 
 	tick(state, saveFilepath)
 
@@ -259,22 +263,39 @@ func tick(state *TrainingState, saveFilepath string) {
 		fmt.Println("medianPerplexity", medianPerplexity)
 	}
 
-	if math.Remainder(epoch, 1) == 0 {
-		fmt.Println("Saving progress", saveFilepath)
-		jsonState, err := json.Marshal(state)
-		go (func() {
-			if err != nil {
-				fmt.Println("stringify err", err)
-				return
-			}
-			err = writeFileContents(saveFilepath, jsonState)
-			if err != nil {
-				fmt.Println("Save error", err, saveFilepath)
-			}
-		})()
+	iepoch := int(epoch)
+	isNewEpoch := iepoch != 0 && iepoch > state.lastSaveEpoch
+	if isNewEpoch {
+		go saveState(state, saveFilepath)
 	}
 
 	tick(state, saveFilepath)
+}
+
+func saveState(state *TrainingState, saveFilepath string) {
+	fmt.Println("Saving progress", saveFilepath)
+	jsonState, err := json.Marshal(state)
+	if err != nil {
+		fmt.Println("stringify err", err)
+		return
+	}
+	err = writeFileContents(saveFilepath, jsonState)
+	if err != nil {
+		fmt.Println("Save error", err, saveFilepath)
+	}
+}
+
+func listenForCommands(state *TrainingState, saveFilepath string) {
+	fmt.Println("You can type `save` or `quit` then enter.")
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		t := scanner.Text()
+		if t == "save" {
+			saveState(state, saveFilepath)
+		} else if t == "quit" {
+			os.Exit(0)
+		}
+	}
 }
 
 func median(values []float64) (middleValue float64) {
