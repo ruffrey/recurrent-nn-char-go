@@ -125,7 +125,7 @@ func main() {
 					c.String("in"),
 					c.String("load"),
 					c.String("save"),
-					c.IntSlice("hidden"),
+					c.IntSlice("hidden")[3:], // cut of beginning default
 				)
 			},
 		},
