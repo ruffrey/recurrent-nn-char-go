@@ -166,26 +166,19 @@ func (g *Graph) Mul(m1 *Mat, m2 *Mat) *Mat {
 
 	if g.NeedsBackprop {
 		backpropMul := func() {
-			var wg sync.WaitGroup
 			for i := 0; i < m1.RowCount; i++ { // loop over rows of m1
-				// Having a goroutine per row is about the right optimization.
-				// Initally it was at the deepest level, but there's too much
-				// plumbing by the runtime and it is slower than this.
-				wg.Add(1)
-				go (func(i int) {
-					for j := 0; j < m2.ColumnCount; j++ { // loop over cols of m2
-						for k := 0; k < m1.ColumnCount; k++ { // dot product loop
-							// reach back through `out` pointer
-							b := out.DW[m2.ColumnCount*i+j]
-							m1.DW[m1.ColumnCount*i+k] += m2.W[m2.ColumnCount*k+j] * b
-							m2.DW[m2.ColumnCount*k+j] += m1.W[m1.ColumnCount*i+k] * b
-
-						}
+				// runtime overhead of parallelizing this with goroutines
+				// makes it slower - each backprop func has its own goroutine
+				// already. The next step is SIMD or openCL/GL.
+				for j := 0; j < m2.ColumnCount; j++ { // loop over cols of m2
+					for k := 0; k < m1.ColumnCount; k++ { // dot product loop
+						// reach back through `out` pointer
+						b := out.DW[m2.ColumnCount*i+j]
+						m1.DW[m1.ColumnCount*i+k] += m2.W[m2.ColumnCount*k+j] * b
+						m2.DW[m2.ColumnCount*k+j] += m1.W[m1.ColumnCount*i+k] * b
 					}
-					wg.Done()
-				})(i)
+				}
 			}
-			wg.Wait()
 		}
 		g.AddBackprop(backpropMul)
 	}
