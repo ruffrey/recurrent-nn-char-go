@@ -200,7 +200,7 @@ StepSolver does a step.
 Should model be a poiner? unable to loop over it if not. So we return it and then copy it back
 onto the existing model.
 */
-func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc float64, clipval float64) {
+func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, regc float32, clipval float32) {
 	// perform parameter update
 	var wg sync.WaitGroup
 
@@ -238,7 +238,8 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc fl
 
 				// update (and regularize)
 				kwi := solver.StepCache[k].W[i]
-				m.W[i] += -stepSize*mdwi/math.Sqrt(kwi+solver.SmoothEPS) - regc*m.W[i]
+				sqrtSumEPS := float32(math.Sqrt(float64(kwi+solver.SmoothEPS)))
+				m.W[i] += -stepSize*mdwi/sqrtSumEPS - regc*m.W[i]
 				m.DW[i] = 0 // reset gradients for next iteration
 			}
 			wg.Done()
@@ -250,7 +251,7 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float64, regc fl
 /*
 PredictSentence creates a prediction based on the current training state. similar to cost function.
 */
-func (state *TrainingState) PredictSentence(samplei bool, temperature float64, maxCharsGenerate int) (s string) {
+func (state *TrainingState) PredictSentence(samplei bool, temperature float32, maxCharsGenerate int) (s string) {
 	state.NeedsBackprop = false // temporary but do not lose functions
 	var prev *CellMemory
 	initial := &CellMemory{}

@@ -20,7 +20,7 @@ var hiddenSizes []int
 
 // optimization
 // L2 regularization strength
-var regc = 0.000001
+var regc float32 = 0.000001
 
 const learningRate = 0.01
 

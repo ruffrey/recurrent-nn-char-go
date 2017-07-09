@@ -8,8 +8,8 @@ Mat holds a matrix.
 type Mat struct {
 	RowCount    int
 	ColumnCount int
-	W           []float64
-	DW          []float64
+	W           []float32
+	DW          []float32
 }
 
 func (m *Mat) toJSON() (string, error) {
@@ -22,9 +22,9 @@ func (m *Mat) toJSON() (string, error) {
 	return string(b[:]), err
 }
 
-func zeros(size int) []float64 {
+func zeros(size int) []float32 {
 	// no need to initialize zero values
-	return make([]float64, size)
+	return make([]float32, size)
 }
 
 /*
@@ -40,12 +40,12 @@ func NewMat(n int, d int) *Mat {
 /*
 RandMat fills a Mat with random numbers and returns it.
 */
-func RandMat(n int, d int, mu int, std float64) *Mat {
+func RandMat(n int, d int, mu int, std float32) *Mat {
 	m := NewMat(n, d)
 	last := len(m.W)
 
 	for i := 0; i < last; i++ {
-		m.W[i] = Randf(-std, std)
+		m.W[i] = float32(Randf(-std, std))
 	}
 
 	return m

@@ -61,8 +61,8 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 		if (len(probs.W) - 1) < ixTarget {
 			break
 		}
-		log2ppl += -math.Log2(probs.W[ixTarget]) // accumulate base 2 log prob and do smoothing
-		cost += -math.Log(probs.W[ixTarget])
+		log2ppl += -math.Log2(float64(probs.W[ixTarget])) // accumulate base 2 log prob and do smoothing
+		cost += -math.Log(float64(probs.W[ixTarget]))
 
 		// write gradients into log probabilities
 		lh.Output.DW = probs.W

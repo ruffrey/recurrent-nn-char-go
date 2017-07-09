@@ -6,8 +6,8 @@ import "sync"
 Solver is a solver
 */
 type Solver struct {
-	DecayRate float64
-	SmoothEPS float64
+	DecayRate float32
+	SmoothEPS float32
 	StepCache map[string]*Mat
 	mux sync.Mutex
 }

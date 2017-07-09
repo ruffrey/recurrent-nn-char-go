@@ -79,7 +79,7 @@ func (g *Graph) Tanh(m *Mat) *Mat {
 	out := NewMat(m.RowCount, m.ColumnCount)
 	n := len(m.W)
 	for ix := 0; ix < n; ix++ {
-		out.W[ix] = math.Tanh(m.W[ix])
+		out.W[ix] = float32(math.Tanh(float64(m.W[ix])))
 	}
 
 	if g.NeedsBackprop {
@@ -103,7 +103,7 @@ func (g *Graph) Sigmoid(m *Mat) *Mat {
 	out := NewMat(m.RowCount, m.ColumnCount)
 	n := len(m.W)
 	for ix := 0; ix < n; ix++ {
-		out.W[ix] = 1.0 / (1 + math.Exp(-m.W[ix]))
+		out.W[ix] = float32(1.0 / (1 + math.Exp(-float64(m.W[ix]))))
 	}
 
 	if g.NeedsBackprop {
@@ -127,7 +127,7 @@ func (g *Graph) Relu(m *Mat) *Mat {
 	out := NewMat(m.RowCount, m.ColumnCount)
 	n := len(m.W)
 	for ix := 0; ix < n; ix++ {
-		out.W[ix] = math.Max(0, m.W[ix]) // relu
+		out.W[ix] = float32(math.Max(0, float64(m.W[ix]))) // relu
 	}
 	if g.NeedsBackprop {
 		backpropRelu := func() {
@@ -156,7 +156,7 @@ func (g *Graph) Mul(m1 *Mat, m2 *Mat) *Mat {
 	/* original */
 	for row := 0; row < m1.RowCount; row++ { // loop over rows of m1
 		for col := 0; col < m2.ColumnCount; col++ { // loop over cols of m2
-			cellSum := 0.0
+			var cellSum float32 = 0.0
 			for colCell := 0; colCell < m1.ColumnCount; colCell++ { // dot product loop
 				cellSum += m1.W[m1.ColumnCount*row+colCell] * m2.W[m2.ColumnCount*colCell+col]
 			}

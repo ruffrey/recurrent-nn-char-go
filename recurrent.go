@@ -18,7 +18,7 @@ Softmax computes the softmax of a matrix, I guess.
 */
 func Softmax(m *Mat) *Mat {
 	out := NewMat(m.RowCount, m.ColumnCount) // probability volume
-	maxval := -999999.0
+	var maxval float32 = -999999.0
 	i := 0
 	n := len(m.W)
 
@@ -28,10 +28,10 @@ func Softmax(m *Mat) *Mat {
 		}
 	}
 
-	s := 0.0
+	var s float32 = 0.0
 	i = 0
 	for ; i < n; i++ {
-		out.W[i] = math.Exp(m.W[i] - maxval)
+		out.W[i] = float32(math.Exp(float64(m.W[i]) - float64(maxval)))
 		s += out.W[i]
 	}
 
@@ -51,7 +51,7 @@ ArgmaxI does something with max and i. maybe integer.
 
 Old comment: argmax of array w
 */
-func ArgmaxI(w []float64) int {
+func ArgmaxI(w []float32) int {
 	maxv := w[0]
 	maxix := 0
 	i := 1
@@ -71,9 +71,9 @@ SampleArgmaxI does something with sampling and integers, maybe.
 
 Old comment: sample argmax from w, assuming w are probabilities that sum to one
 */
-func SampleArgmaxI(w []float64) int {
+func SampleArgmaxI(w []float32) int {
 	r := Randf(0, 1)
-	x := 0.0
+	var x float32 = 0.0
 	i := 0
 
 	for {

@@ -8,8 +8,8 @@ import (
 /*
 Randf makes random numbers
 */
-func Randf(a float64, b float64) float64 {
-	return rand.Float64()*(b-a) + a
+func Randf(a float32, b float32) float32 {
+	return rand.Float32()*(b-a) + a
 }
 
 /*
