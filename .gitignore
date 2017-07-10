@@ -3,6 +3,7 @@ recurrent-nn-char-go
 ricur
 
 # training files
+models
 *.json
 
 # IDE files

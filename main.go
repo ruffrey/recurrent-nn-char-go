@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/profile"
 	"io/ioutil"
 	"bufio"
+	"runtime/debug"
 )
 
 // model parameters
@@ -82,8 +83,8 @@ func main() {
 				},
 				cli.StringFlag{
 					Name:  "save",
-					Value: "model.json",
-					Usage: "(default=model.json) `file` path to save the model",
+					Value: "models/model.json",
+					Usage: "(default=models/model.json) `file` path to save the model",
 				},
 				cli.IntSliceFlag{
 					Name:  "hidden",
