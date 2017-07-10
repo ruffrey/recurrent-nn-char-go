@@ -3,7 +3,6 @@ package main
 import (
 	"math"
 	"sync"
-	"runtime"
 )
 
 type backprop func()
@@ -31,8 +30,6 @@ func (g *Graph) AddBackprop(f func()) {
 	g.Backprop = append(g.Backprop, f)
 }
 
-var _threads int = runtime.NumCPU() * 2
-
 /*
 Backward runs all backpropagation functions, in order.
 */
@@ -43,7 +40,7 @@ func (g *Graph) Backward() {
 	// too many overloads the runtime with a large and deep neural net.
 	i := totalBackprops - 1
 	for ; i >= 0; {
-		for thread := 0; i >= 0 && thread < _threads; {
+		for thread := 0; i >= 0 && thread < concurrentThreads; {
 			thread++
 			wg.Add(1)
 			go (func(f int) {

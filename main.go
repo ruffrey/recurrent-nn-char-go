@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/profile"
 	"io/ioutil"
 	"bufio"
+	"runtime"
 )
 
 // model parameters
@@ -46,7 +47,7 @@ var clipval float32
 const sampleSoftmaxTemperature = 1.0
 
 // max length of generated sentences
-const maxCharsGenerate = 100
+const maxCharsGenerate = 500
 
 // various global var inits
 
@@ -54,6 +55,8 @@ const maxCharsGenerate = 100
 var solverecurrent *Solver
 
 // old gradCheck was here.
+
+var concurrentThreads int = runtime.NumCPU() * 2
 
 func main() {
 	app := cli.NewApp()
@@ -275,14 +278,14 @@ func tick(state *TrainingState, saveFilepath string) {
 
 	epoch := float64(state.TickIterator) / float64(state.EpochSize)
 
-	if math.Remainder(float64(state.TickIterator), 300) == 0 {
+	if math.Remainder(float64(state.TickIterator), 250) == 0 {
 		t1 := time.Now().UnixNano() / 1000000 // ms
 		tickTime := t1 - t0
 
 		pred := ""
 		fmt.Println("---------------------")
 		// draw samples
-		for q := 0; q < 5; q++ {
+		for q := 0; q < 2; q++ {
 			pred = state.PredictSentence(true, sampleSoftmaxTemperature, maxCharsGenerate)
 			fmt.Println(pred)
 		}
