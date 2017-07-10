@@ -131,7 +131,36 @@ func main() {
 		{
 			Name:  "sample",
 			Usage: "Run and receive output from an existing neural network",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "load",
+					Usage: "`file` path to load an existing model",
+				},
+				cli.StringFlag{
+					Name:  "seed",
+					Usage: "Text to use in prediction",
+				},
+			},
 			Action: func(c *cli.Context) error {
+				s, err := ioutil.ReadFile(c.String("load"))
+				if err != nil {
+					return err
+				}
+				state := &TrainingState{}
+				err = json.Unmarshal(s, state)
+				if err != nil {
+					fmt.Println("state=", state)
+					return err
+				}
+
+				sentences := strings.Split(c.String("seed"), "\n")
+				for i := 0; i < len(sentences); i++ {
+					// load up the gradients before prediction
+					state.CostFunction(sentences[i])
+					pred := state.PredictSentence(true, sampleSoftmaxTemperature, maxCharsGenerate)
+					fmt.Println(pred)
+				}
+
 				return nil
 			},
 		},
