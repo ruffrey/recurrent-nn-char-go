@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/profile"
 	"io/ioutil"
 	"bufio"
-	"runtime/debug"
 )
 
 // model parameters
