@@ -215,7 +215,9 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 
 	go listenForCommands(state, saveFilepath)
 
-	tick(state, saveFilepath)
+	for {
+		tick(state, saveFilepath)
+	}
 
 	return err
 }
@@ -266,10 +268,9 @@ func tick(state *TrainingState, saveFilepath string) {
 	iepoch := int(epoch)
 	isNewEpoch := iepoch != 0 && iepoch > state.lastSaveEpoch
 	if isNewEpoch {
+		state.lastSaveEpoch = iepoch
 		go saveState(state, saveFilepath)
 	}
-
-	tick(state, saveFilepath)
 }
 
 func saveState(state *TrainingState, saveFilepath string) {
