@@ -242,7 +242,8 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 		state.InitModel()
 	}
 
-	go listenForCommands(state, saveFilepath)
+	// causes huge IDLE wake ups on macOS, in the tens of thousands...
+	//go listenForCommands(state, saveFilepath)
 
 	for {
 		tick(state, saveFilepath)
@@ -292,18 +293,18 @@ func tick(state *TrainingState, saveFilepath string) {
 		fmt.Println("epoch=", epoch)
 		fmt.Println("ticktime", tickTime, "ms")
 		fmt.Println("medianPerplexity", medianPerplexity)
-	}
 
-	iepoch := int(epoch)
-	isNewEpoch := iepoch != 0 && iepoch > state.lastSaveEpoch
-	if isNewEpoch {
-		state.lastSaveEpoch = iepoch
-		go saveState(state, saveFilepath)
+		iepoch := int(epoch)
+		isNewEpoch := iepoch != 0 && iepoch > state.lastSaveEpoch
+		if isNewEpoch {
+			state.lastSaveEpoch = iepoch
+			go saveState(state, saveFilepath)
+		}
 	}
 }
 
 func saveState(state *TrainingState, saveFilepath string) {
-	fmt.Println("Saving progress", saveFilepath)
+	fmt.Println("Saving progress...", saveFilepath)
 	jsonState, err := json.Marshal(state)
 	if err != nil {
 		fmt.Println("stringify err", err)
@@ -312,6 +313,8 @@ func saveState(state *TrainingState, saveFilepath string) {
 	err = writeFileContents(saveFilepath, jsonState)
 	if err != nil {
 		fmt.Println("Save error", err, saveFilepath)
+	} else {
+		fmt.Println("  ok - ", saveFilepath)
 	}
 }
 
