@@ -44,7 +44,21 @@ func (g *Graph) Backward() {
 			thread++
 			wg.Add(1)
 			go (func(f int) {
-				g.Backprop[f]()
+				fn := g.Backprop[f]
+				wasCreatedInGoneGoroutine := fn == nil
+				if wasCreatedInGoneGoroutine {
+					// Introduced in commit: 7807054d4594a08bdee0412a5782346c579a9b94
+					// Once we started matrix math in parallel during the forward
+					// pass, and some of the results were thrown out, we ended
+					// up with callback functions getting cleaned up, I think.
+					// Probably because the goroutine had been cleaned up, and
+					// the result was only used temporarily inside the goroutine.
+					// This is probably a Go runtime bug, mixed in with an unnecessary
+					// callback - nonetheless easily worked around.
+					wg.Done()
+					return
+				}
+				fn()
 				wg.Done()
 			})(i)
 			i--
