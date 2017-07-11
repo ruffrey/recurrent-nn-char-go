@@ -14,7 +14,7 @@ to disk between sessions.
 */
 type TrainingState struct {
 	Graph `json:"-"`
-	HiddenSizes []int
+	HiddenSizes    []int
 	Model          Model
 	Solver         Solver
 	LetterToIndex  map[string]int
@@ -129,10 +129,15 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *Mat, prev *CellMem
 	var inputVector *Mat
 	var hiddenPrev *Mat
 	var cellPrev *Mat
+	var wg sync.WaitGroup
 
 	// TODO: parallize this hot path, which is tricky because it
 	// relies on the previous array value.
 	for d := 0; d < len(hiddenSizes); d++ {
+		var inputGate *Mat
+		var forgetGate *Mat
+		var outputGate *Mat
+		var cellWrite *Mat
 
 		if d == 0 {
 			inputVector = x
@@ -146,32 +151,50 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *Mat, prev *CellMem
 		ds := strconv.Itoa(d)
 
 		// input gate
-		h0 := state.Mul(state.Model["Wix"+ds], inputVector)
-		h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
-		add1 := state.Add(h0, h1)
-		add2 := state.Add(add1, state.Model["bi"+ds])
-		inputGate := state.Sigmoid(add2)
+		wg.Add(1)
+		go (func() {
+			h0 := state.Mul(state.Model["Wix"+ds], inputVector)
+			h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
+			add1 := state.Add(h0, h1)
+			add2 := state.Add(add1, state.Model["bi"+ds])
+			inputGate = state.Sigmoid(add2)
+			wg.Done()
+		})()
 
 		// forget gate
-		h2 := state.Mul(state.Model["Wfx"+ds], inputVector)
-		h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
-		add3 := state.Add(h2, h3)
-		add4 := state.Add(add3, state.Model["bf"+ds])
-		forgetGate := state.Sigmoid(add4)
+		wg.Add(1)
+		go (func() {
+			h2 := state.Mul(state.Model["Wfx"+ds], inputVector)
+			h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
+			add3 := state.Add(h2, h3)
+			add4 := state.Add(add3, state.Model["bf"+ds])
+			forgetGate = state.Sigmoid(add4)
+			wg.Done()
+		})()
 
 		// output gate
-		h4 := state.Mul(state.Model["Wox"+ds], inputVector)
-		h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
-		add45 := state.Add(h4, h5)
-		add45bods := state.Add(add45, state.Model["bo"+ds])
-		outputGate := state.Sigmoid(add45bods)
+		wg.Add(1)
+		go (func() {
+			h4 := state.Mul(state.Model["Wox"+ds], inputVector)
+			h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
+			add45 := state.Add(h4, h5)
+			add45bods := state.Add(add45, state.Model["bo"+ds])
+			outputGate = state.Sigmoid(add45bods)
+			wg.Done()
+		})()
 
 		// write operation on cells
-		h6 := state.Mul(state.Model["Wcx"+ds], inputVector)
-		h7 := state.Mul(state.Model["Wch"+ds], hiddenPrev)
-		add67 := state.Add(h6, h7)
-		add67bcds := state.Add(add67, state.Model["bc"+ds])
-		cellWrite := state.Tanh(add67bcds)
+		wg.Add(1)
+		go (func() {
+			h6 := state.Mul(state.Model["Wcx"+ds], inputVector)
+			h7 := state.Mul(state.Model["Wch"+ds], hiddenPrev)
+			add67 := state.Add(h6, h7)
+			add67bcds := state.Add(add67, state.Model["bc"+ds])
+			cellWrite = state.Tanh(add67bcds)
+			wg.Done()
+		})()
+
+		wg.Wait()
 
 		// compute new cell activation
 		retainCell := state.Eltmul(forgetGate, cellPrev) // what do we keep from cell

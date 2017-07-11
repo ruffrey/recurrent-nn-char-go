@@ -68,7 +68,7 @@ var solverecurrent *Solver
 
 // old gradCheck was here.
 
-var concurrentThreads int = runtime.NumCPU() * 2
+var concurrentThreads int = runtime.NumCPU()
 
 func main() {
 	app := cli.NewApp()

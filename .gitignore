@@ -1,6 +1,7 @@
 # built executables
 recurrent-nn-char-go
 ricur
+build
 
 # training files
 models
