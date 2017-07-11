@@ -39,6 +39,18 @@ original 5.0
 */
 var clipval float32
 
+/*
+sequenceLength is how many characters to use when
+
+(I think!)
+
+Other definitions:
+- number of timesteps to unroll for
+- size of letter embeddings
+- frame size
+*/
+var sequenceLength int
+
 /* */
 
 // prediction params
@@ -108,11 +120,17 @@ func main() {
 					Value: 5.0,
 					Usage: "(optional) Gradient Clip: `float32` max value allowed for derivatives of weights before they are capped",
 				},
+				cli.Float64Flag{
+					Name:  "seqlen",
+					Value: 10,
+					Usage: "(optional) Sequence Length: `int` frame size",
+				},
 			},
 			Before: func(c *cli.Context) error {
 				learningRate = float32(c.Float64("learn"))
 				regc = float32(c.Float64("regc"))
 				clipval = float32(c.Float64("gradmax"))
+				sequenceLength = c.Int("seqlen")
 
 				return nil
 			},
@@ -145,7 +163,11 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				s, err := ioutil.ReadFile(c.String("load"))
+				loadFilepath := c.String("load")
+				if loadFilepath == "" {
+					return errors.New("Missing required filepath to model: --load")
+				}
+				s, err := ioutil.ReadFile(loadFilepath)
 				if err != nil {
 					return err
 				}
@@ -157,10 +179,14 @@ func main() {
 				}
 
 				sentences := strings.Split(c.String("seed"), "\n")
+				solver := NewSolver()
 				for i := 0; i < len(sentences); i++ {
 					// load up the gradients before prediction
+					fmt.Println("--", sentences[i], "--")
 					state.CostFunction(sentences[i])
-					pred := state.PredictSentence(true, sampleSoftmaxTemperature, maxCharsGenerate)
+					state.Backward()
+					state.StepSolver(solver, learningRate, regc, clipval)
+					pred := state.PredictSentence(true, sampleSoftmaxTemperature, maxCharsGenerate, sentences[i])
 					fmt.Println(pred)
 				}
 
@@ -185,6 +211,7 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 	fmt.Println("  learn rate=", learningRate)
 	fmt.Println("  regularization=", regc)
 	fmt.Println("  gradient clip=", clipval)
+	fmt.Println("  sequence length=", sequenceLength)
 
 	// this is where the training state is held in memory, not in global scope
 	// most importantly, to prevent leaks.
@@ -209,7 +236,6 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 			return errors.New("Cannot create a new network that is empty")
 		}
 		state = &TrainingState{
-			LetterSize:  5,
 			HiddenSizes: defaultHiddenLayers,
 			EpochSize:   -1,
 			InputSize:   -1,
@@ -286,7 +312,7 @@ func tick(state *TrainingState, saveFilepath string) {
 		fmt.Println("---------------------")
 		// draw samples
 		for q := 0; q < 2; q++ {
-			pred = state.PredictSentence(true, sampleSoftmaxTemperature, maxCharsGenerate)
+			pred = state.PredictSentence(true, sampleSoftmaxTemperature, maxCharsGenerate, "")
 			fmt.Println(pred)
 		}
 		fmt.Println("---------------------")

@@ -15,8 +15,6 @@ to disk between sessions.
 type TrainingState struct {
 	Graph `json:"-"`
 	HiddenSizes []int
-	// LetterSize is the size of letter embeddings
-	LetterSize     int
 	Model          Model
 	Solver         Solver
 	LetterToIndex  map[string]int
@@ -89,9 +87,9 @@ InitModel inits its own Model
 func (state *TrainingState) InitModel() {
 	// letter embedding vectors
 	tempModel := Model{}
-	tempModel["Wil"] = RandMat(state.InputSize, state.LetterSize, 0, 0.08)
+	tempModel["Wil"] = RandMat(state.InputSize, sequenceLength, 0, 0.08)
 
-	lstm := NewLSTMModel(state.LetterSize, state.HiddenSizes, state.OutputSize)
+	lstm := NewLSTMModel(sequenceLength, state.HiddenSizes, state.OutputSize)
 	utilAddToModel(tempModel, lstm)
 
 	state.Model = tempModel
@@ -261,18 +259,25 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, regc fl
 /*
 PredictSentence creates a prediction based on the current training state. similar to cost function.
 */
-func (state *TrainingState) PredictSentence(samplei bool, temperature float32, maxCharsGenerate int) (s string) {
+func (state *TrainingState) PredictSentence(samplei bool, temperature float32, maxCharsGenerate int, seedString string) (s string) {
 	state.NeedsBackprop = false // temporary but do not lose functions
 	var prev *CellMemory
 	initial := &CellMemory{}
 	prev = initial
 	var lh *CellMemory
+	seedIndex := 0
+	seed := strings.Split(seedString, "")
 
 	for {
 		// RNN tick
 		var ixSource int
 		if len(s) == 0 {
 			ixSource = 0
+		} else if seedIndex < len(seed) {
+			prevIndex := len(s) - 1
+			prevLetter := seed[prevIndex]
+			ixSource = state.LetterToIndex[prevLetter]
+			seedIndex++
 		} else {
 			letters := strings.Split(s, "")
 			prevIndex := len(s) - 1
@@ -321,5 +326,8 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float32, m
 	}
 
 	state.NeedsBackprop = true // temporary but do not lose functions
+	if seedString != "" {
+		s = strings.Replace(s, seedString, "", 1)
+	}
 	return s
 }
