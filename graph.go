@@ -42,8 +42,8 @@ func (g *Graph) Backward() {
 	// only do as many goroutines at a a time as threads.
 	// too many overloads the runtime with a large and deep neural net.
 	i := totalBackprops - 1
-	for ; i >= 0; i++ {
-		g.Backprop[i]()
+	for ; i >= 0; {
+		// TODO: fix data races, somehow
 		for thread := 0; i >= 0 && thread < concurrentThreads; {
 			thread++
 			wg.Add(1)
