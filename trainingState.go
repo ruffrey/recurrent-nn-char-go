@@ -139,7 +139,7 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *Mat, prev *CellMem
 	var hiddenPrev *Mat
 	var cellPrev *Mat
 
-	// TODO: parallize this hot path, which is tricky because it
+	// Parallizing this hot path is tricky because it
 	// relies on the previous array value.
 	for d := 0; d < len(hiddenSizes); d++ {
 		var inputGate *Mat

@@ -13,6 +13,7 @@ Graph is the neural network graph.
 type Graph struct {
 	NeedsBackprop bool
 	Backprop      []backprop // holds backprop functions
+	bpMux sync.Mutex // modifying backprop array
 }
 
 /*
@@ -27,7 +28,9 @@ func (g *Graph) ResetBackprop(needsBackprop bool) {
 AddBackprop adds the backpropagation function `f` to the end of the Backrop list.
 */
 func (g *Graph) AddBackprop(f func()) {
+	g.bpMux.Lock()
 	g.Backprop = append(g.Backprop, f)
+	g.bpMux.Unlock()
 }
 
 /*
@@ -39,7 +42,8 @@ func (g *Graph) Backward() {
 	// only do as many goroutines at a a time as threads.
 	// too many overloads the runtime with a large and deep neural net.
 	i := totalBackprops - 1
-	for ; i >= 0; {
+	for ; i >= 0; i++ {
+		g.Backprop[i]()
 		for thread := 0; i >= 0 && thread < concurrentThreads; {
 			thread++
 			wg.Add(1)
