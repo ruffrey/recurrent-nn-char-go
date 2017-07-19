@@ -1,19 +1,20 @@
 package main
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
+	"math/rand"
+	"os"
 	"sort"
 	"strings"
 	"time"
-	"encoding/json"
-	"gopkg.in/urfave/cli.v1"
-	"os"
+
 	"github.com/getlantern/errors"
 	"github.com/pkg/profile"
-	"io/ioutil"
-	"bufio"
-	"runtime"
+	"gopkg.in/urfave/cli.v1"
 )
 
 // model parameters
@@ -67,8 +68,6 @@ const maxCharsGenerate = 500
 var solverecurrent *Solver
 
 // old gradCheck was here.
-
-var concurrentThreads int = runtime.NumCPU()
 
 func main() {
 	app := cli.NewApp()
@@ -283,7 +282,7 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 
 func tick(state *TrainingState, saveFilepath string) {
 	// sample sentence from data
-	sentix := Randi(0, len(state.DataSentences))
+	sentix := randi(0, len(state.DataSentences))
 	sent := state.DataSentences[sentix]
 
 	t0 := time.Now().UnixNano() / 1000000 // log start timestamp ms
@@ -366,4 +365,13 @@ func median(values []float64) (middleValue float64) {
 	halfway := int(math.Floor(float64(lenValues / 2)))
 	middleValue = values[halfway]
 	return middleValue
+}
+
+/*
+randi makes random integers between two integers
+*/
+func randi(low int, hi int) int {
+	a := float64(low)
+	b := float64(hi)
+	return int(math.Floor(rand.Float64()*(b-a) + a))
 }

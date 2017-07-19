@@ -1,6 +1,6 @@
 # built executables
 recurrent-nn-char-go
-ricur
+ricur/ricur
 build
 
 # training files

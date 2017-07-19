@@ -3,6 +3,7 @@ package main
 import (
 	"math"
 	"strings"
+	"github.com/ruffrey/recurrent-nn-char-go/mat32"
 )
 
 /*
@@ -28,7 +29,7 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 	var prev *CellMemory
 	initial := CellMemory{}
 	prev = &initial
-	var probs *Mat
+	var probs *mat32.Mat
 
 	// loop through each letter of the selected sentence
 	for i := -1; i < n; i++ {
