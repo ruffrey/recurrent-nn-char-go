@@ -1,19 +1,20 @@
 package main
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
+	"os"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
-	"encoding/json"
-	"gopkg.in/urfave/cli.v1"
-	"os"
+
 	"github.com/getlantern/errors"
 	"github.com/pkg/profile"
-	"io/ioutil"
-	"bufio"
-	"runtime"
+	"gopkg.in/urfave/cli.v1"
 )
 
 // model parameters

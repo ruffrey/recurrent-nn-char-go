@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"github.com/ruffrey/recurrent-nn-char-go/mat32"
 )
 
 /*
@@ -16,7 +17,7 @@ func Assert(assertion bool, msg string) {
 /*
 Softmax computes the softmax of a matrix, I guess.
 */
-func Softmax(m *Mat) *Mat {
+func Softmax(m *mat32.Mat) *mat32.Mat {
 	out := NewMat(m.RowCount, m.ColumnCount) // probability volume
 	var maxval float32 = -999999.0
 	i := 0
