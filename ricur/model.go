@@ -1,19 +1,22 @@
 package main
 
-import "strconv"
+import (
+	"strconv"
+	"github.com/ruffrey/recurrent-nn-char-go/mat32"
+)
 
 /*
 Model is the graph model.
 */
-type Model map[string]*Mat
+type Model map[string]*mat32.Mat
 
 /*
 CellMemory is apparently passed around during foward LSTM sessions.
 */
 type CellMemory struct {
-	Hidden []*Mat
-	Cell   []*Mat
-	Output *Mat
+	Hidden []*mat32.Mat
+	Cell   []*mat32.Mat
+	Output *mat32.Mat
 }
 
 /*
@@ -34,23 +37,23 @@ func NewLSTMModel(inputSize int, hiddenSizes []int, outputSize int) Model {
 
 		ds := strconv.Itoa(d)
 		// gates parameters
-		model["Wix"+ds] = RandMat(hiddenSize, prevSize, 0, 0.08)
-		model["Wih"+ds] = RandMat(hiddenSize, hiddenSize, 0, 0.08)
-		model["bi"+ds] = NewMat(hiddenSize, 1)
-		model["Wfx"+ds] = RandMat(hiddenSize, prevSize, 0, 0.08)
-		model["Wfh"+ds] = RandMat(hiddenSize, hiddenSize, 0, 0.08)
-		model["bf"+ds] = NewMat(hiddenSize, 1)
-		model["Wox"+ds] = RandMat(hiddenSize, prevSize, 0, 0.08)
-		model["Woh"+ds] = RandMat(hiddenSize, hiddenSize, 0, 0.08)
-		model["bo"+ds] = NewMat(hiddenSize, 1)
+		model["Wix"+ds] = mat32.RandMat(hiddenSize, prevSize, 0, 0.08)
+		model["Wih"+ds] = mat32.RandMat(hiddenSize, hiddenSize, 0, 0.08)
+		model["bi"+ds] = mat32.NewMat(hiddenSize, 1)
+		model["Wfx"+ds] = mat32.RandMat(hiddenSize, prevSize, 0, 0.08)
+		model["Wfh"+ds] = mat32.RandMat(hiddenSize, hiddenSize, 0, 0.08)
+		model["bf"+ds] = mat32.NewMat(hiddenSize, 1)
+		model["Wox"+ds] = mat32.RandMat(hiddenSize, prevSize, 0, 0.08)
+		model["Woh"+ds] = mat32.RandMat(hiddenSize, hiddenSize, 0, 0.08)
+		model["bo"+ds] = mat32.NewMat(hiddenSize, 1)
 		// cell write params
-		model["Wcx"+ds] = RandMat(hiddenSize, prevSize, 0, 0.08)
-		model["Wch"+ds] = RandMat(hiddenSize, hiddenSize, 0, 0.08)
-		model["bc"+ds] = NewMat(hiddenSize, 1)
+		model["Wcx"+ds] = mat32.RandMat(hiddenSize, prevSize, 0, 0.08)
+		model["Wch"+ds] = mat32.RandMat(hiddenSize, hiddenSize, 0, 0.08)
+		model["bc"+ds] = mat32.NewMat(hiddenSize, 1)
 	}
 	// decoder params
-	model["Whd"] = RandMat(outputSize, hiddenSize, 0, 0.08)
-	model["bd"] = NewMat(outputSize, 1)
+	model["Whd"] = mat32.RandMat(outputSize, hiddenSize, 0, 0.08)
+	model["bd"] = mat32.NewMat(outputSize, 1)
 
 	return model
 }

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"github.com/ruffrey/recurrent-nn-char-go/mat32"
 )
 
 /*
@@ -13,7 +14,7 @@ TrainingState is the representation of the training data which gets saved or loa
 to disk between sessions.
 */
 type TrainingState struct {
-	Graph `json:"-"`
+	mat32.Graph `json:"-"`
 	HiddenSizes    []int
 	Model          Model
 	Solver         Solver
@@ -29,8 +30,8 @@ type TrainingState struct {
 	OutputSize    int
 	DataSentences []string `json:"-"`
 	TickIterator  int
-	hiddenPrevs   []*Mat
-	cellPrevs     []*Mat
+	hiddenPrevs   []*mat32.Mat
+	cellPrevs     []*mat32.Mat
 }
 
 /*
@@ -87,7 +88,7 @@ InitModel inits its own Model
 func (state *TrainingState) InitModel() {
 	// letter embedding vectors
 	tempModel := Model{}
-	tempModel["Wil"] = RandMat(state.InputSize, sequenceLength, 0, 0.08)
+	tempModel["Wil"] = mat32.RandMat(state.InputSize, sequenceLength, 0, 0.08)
 
 	lstm := NewLSTMModel(sequenceLength, state.HiddenSizes, state.OutputSize)
 	utilAddToModel(tempModel, lstm)
@@ -103,13 +104,13 @@ func utilAddToModel(modelto Model, modelfrom Model) {
 }
 
 // worker processes intensive func presumably async then sends back the value
-func worker(fn func() *Mat, out chan *Mat) {
+func worker(fn func() *mat32.Mat, out chan *mat32.Mat) {
 	out <- fn()
 }
-var inputChan chan *Mat = make(chan *Mat)
-var forgetChan chan *Mat = make(chan *Mat)
-var outputChan chan *Mat = make(chan *Mat)
-var writeChan chan *Mat = make(chan *Mat)
+var inputChan chan *mat32.Mat = make(chan *mat32.Mat)
+var forgetChan chan *mat32.Mat = make(chan *mat32.Mat)
+var outputChan chan *mat32.Mat = make(chan *mat32.Mat)
+var writeChan chan *mat32.Mat = make(chan *mat32.Mat)
 
 /*
 ForwardLSTM does forward propagation for a single tick of LSTM. Will be called in a loop.
@@ -117,35 +118,35 @@ ForwardLSTM does forward propagation for a single tick of LSTM. Will be called i
 x is 1D column vector with observation
 prev is a struct containing hidden and cell from previous iteration
 */
-func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *Mat, prev *CellMemory) *CellMemory {
+func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *CellMemory) *CellMemory {
 
 	// initialize when not yet initialized. we know there will always be hidden layers.
 	if len(prev.Hidden) == 0 {
 		// reset these
-		state.hiddenPrevs = make([]*Mat, len(hiddenSizes))
-		state.cellPrevs = make([]*Mat, len(hiddenSizes))
+		state.hiddenPrevs = make([]*mat32.Mat, len(hiddenSizes))
+		state.cellPrevs = make([]*mat32.Mat, len(hiddenSizes))
 		for s := 0; s < len(hiddenSizes); s++ {
-			state.hiddenPrevs[s] = NewMat(hiddenSizes[s], 1)
-			state.cellPrevs[s] = NewMat(hiddenSizes[s], 1)
+			state.hiddenPrevs[s] = mat32.NewMat(hiddenSizes[s], 1)
+			state.cellPrevs[s] = mat32.NewMat(hiddenSizes[s], 1)
 		}
 	} else {
 		state.hiddenPrevs = prev.Hidden
 		state.cellPrevs = prev.Cell
 	}
 
-	var hidden []*Mat
-	var cell []*Mat
-	var inputVector *Mat
-	var hiddenPrev *Mat
-	var cellPrev *Mat
+	var hidden []*mat32.Mat
+	var cell []*mat32.Mat
+	var inputVector *mat32.Mat
+	var hiddenPrev *mat32.Mat
+	var cellPrev *mat32.Mat
 
 	// Parallizing this hot path is tricky because it
 	// relies on the previous array value.
 	for d := 0; d < len(hiddenSizes); d++ {
-		var inputGate *Mat
-		var forgetGate *Mat
-		var outputGate *Mat
-		var cellWrite *Mat
+		var inputGate *mat32.Mat
+		var forgetGate *mat32.Mat
+		var outputGate *mat32.Mat
+		var cellWrite *mat32.Mat
 
 		if d == 0 {
 			inputVector = x
@@ -161,7 +162,7 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *Mat, prev *CellMem
 		// send 4 jobs to the worker, when 4 come back, done.
 
 		// input gate
-		go worker(func() *Mat {
+		go worker(func() *mat32.Mat {
 			h0 := state.Mul(state.Model["Wix"+ds], inputVector)
 			h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
 			add1 := state.Add(h0, h1)
@@ -170,7 +171,7 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *Mat, prev *CellMem
 		}, inputChan)
 
 		// forget gate
-		go worker(func() *Mat {
+		go worker(func() *mat32.Mat {
 			h2 := state.Mul(state.Model["Wfx"+ds], inputVector)
 			h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
 			add3 := state.Add(h2, h3)
@@ -179,7 +180,7 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *Mat, prev *CellMem
 		}, forgetChan)
 
 		// output gate
-		go worker(func() *Mat {
+		go worker(func() *mat32.Mat {
 			h4 := state.Mul(state.Model["Wox"+ds], inputVector)
 			h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
 			add45 := state.Add(h4, h5)
@@ -188,7 +189,7 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *Mat, prev *CellMem
 		}, outputChan)
 
 		// write operation on cells
-		go worker(func() *Mat {
+		go worker(func() *mat32.Mat {
 			h6 := state.Mul(state.Model["Wcx"+ds], inputVector)
 			h7 := state.Mul(state.Model["Wch"+ds], hiddenPrev)
 			add67 := state.Add(h6, h7)
@@ -261,7 +262,7 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, regc fl
 	for key, mod := range state.Model {
 		_, hasKey := solver.StepCache[key]
 		if !hasKey {
-			solver.StepCache[key] = NewMat(mod.RowCount, mod.ColumnCount)
+			solver.StepCache[key] = mat32.NewMat(mod.RowCount, mod.ColumnCount)
 		}
 	}
 
@@ -272,7 +273,7 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, regc fl
 		// Having this lower down in the for loop nest did not seem to
 		// speed things up, due to increased overhead of tracking
 		// goroutines by the runtime.
-		go (func(k string, m *Mat) {
+		go (func(k string, m *mat32.Mat) {
 			i := 0
 			n := len(m.W)
 			for ; i < n; i++ {

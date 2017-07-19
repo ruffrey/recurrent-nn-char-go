@@ -1,4 +1,4 @@
-package main
+package mat32
 
 import "encoding/json"
 

@@ -1,11 +1,15 @@
-package main
+package mat32
 
 import (
 	"math"
 	"sync"
+	"runtime"
 )
 
 type backprop func()
+
+var concurrentThreads int = runtime.NumCPU()
+
 
 /*
 Graph is the neural network graph.

@@ -6,19 +6,10 @@ import (
 )
 
 /*
-Assert ensures our code is not breaking down and halts the program.
-*/
-func Assert(assertion bool, msg string) {
-	if !assertion {
-		panic(msg)
-	}
-}
-
-/*
 Softmax computes the softmax of a matrix, I guess.
 */
 func Softmax(m *mat32.Mat) *mat32.Mat {
-	out := NewMat(m.RowCount, m.ColumnCount) // probability volume
+	out := mat32.NewMat(m.RowCount, m.ColumnCount) // probability volume
 	var maxval float32 = -999999.0
 	i := 0
 	n := len(m.W)
@@ -73,7 +64,7 @@ SampleArgmaxI does something with sampling and integers, maybe.
 Old comment: sample argmax from w, assuming w are probabilities that sum to one
 */
 func SampleArgmaxI(w []float32) int {
-	r := Randf(0, 1)
+	r := mat32.Randf(0, 1)
 	var x float32 = 0.0
 	i := 0
 
