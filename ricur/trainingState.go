@@ -21,7 +21,7 @@ type TrainingState struct {
 	LetterToIndex  map[string]int
 	IndexToLetter  map[int]string
 	Vocab          []string
-	PerplexityList []float64
+	PerplexityList []float64 `json:"-"`
 
 	// the following do not need to be persisted between training sessions
 	EpochSize     int
@@ -29,7 +29,7 @@ type TrainingState struct {
 	InputSize     int
 	OutputSize    int
 	DataSentences []string `json:"-"`
-	TickIterator  int
+	TickIterator  int `json:"-"`
 	hiddenPrevs   []*mat32.Mat
 	cellPrevs     []*mat32.Mat
 }
@@ -78,7 +78,6 @@ func (state *TrainingState) InitVocab(sents []string, countThreshold int) {
 
 	state.InputSize = len(state.Vocab)
 	state.OutputSize = len(state.Vocab)
-	state.EpochSize = len(sents)
 	fmt.Println(len(state.Vocab), "distinct characters:\n ", state.Vocab)
 }
 
@@ -107,6 +106,7 @@ func utilAddToModel(modelto Model, modelfrom Model) {
 func worker(fn func() *mat32.Mat, out chan *mat32.Mat) {
 	out <- fn()
 }
+
 var inputChan chan *mat32.Mat = make(chan *mat32.Mat)
 var forgetChan chan *mat32.Mat = make(chan *mat32.Mat)
 var outputChan chan *mat32.Mat = make(chan *mat32.Mat)

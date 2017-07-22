@@ -264,8 +264,11 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 	}
 
 	state.DataSentences = strings.Split(input, "\n")
-	state.InitVocab(state.DataSentences, 1) // takes count threshold for characters
 
+	if loadFilepath == "" {
+		state.InitVocab(state.DataSentences, 1) // takes count threshold for characters
+	}
+	state.EpochSize = len(state.DataSentences)
 	if loadFilepath == "" {
 		state.InitModel()
 	}
