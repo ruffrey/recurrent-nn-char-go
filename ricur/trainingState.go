@@ -351,12 +351,12 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float32, m
 			}
 		}
 
-		probs := Softmax(logrithmicProbabilities)
+		probs := mat32.Softmax(logrithmicProbabilities)
 
 		if samplei {
-			ixSource = SampleArgmaxI(probs.W)
+			ixSource = mat32.SampleArgmaxI(probs.W)
 		} else {
-			ixSource = ArgmaxI(probs.W)
+			ixSource = mat32.ArgmaxI(probs.W)
 		}
 
 		if ixSource == 0 || ixSource == len(probs.W) {

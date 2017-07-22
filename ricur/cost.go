@@ -56,7 +56,7 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 
 		// set gradients into logprobabilities
 		// interpret output as logrithmicProbabilities
-		probs = Softmax(lh.Output) // compute the softmax probabilities
+		probs = mat32.Softmax(lh.Output) // compute the softmax probabilities
 
 		// all done? END?
 		if (len(probs.W) - 1) < ixTarget {

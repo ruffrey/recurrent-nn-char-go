@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -273,9 +272,6 @@ func training(inputSeed string, inputFile string, loadFilepath string, saveFilep
 		state.InitModel()
 	}
 
-	// causes huge IDLE wake ups on macOS, in the tens of thousands...
-	//go listenForCommands(state, saveFilepath)
-
 	for {
 		tick(state, saveFilepath)
 	}
@@ -346,19 +342,6 @@ func saveState(state *TrainingState, saveFilepath string) {
 		fmt.Println("Save error", err, saveFilepath)
 	} else {
 		fmt.Println("  ok - ", saveFilepath)
-	}
-}
-
-func listenForCommands(state *TrainingState, saveFilepath string) {
-	fmt.Println("You can type `save` or `quit` then enter.")
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		t := scanner.Text()
-		if t == "save" {
-			saveState(state, saveFilepath)
-		} else if t == "quit" {
-			os.Exit(0)
-		}
 	}
 }
 
