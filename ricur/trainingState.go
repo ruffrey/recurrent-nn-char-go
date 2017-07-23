@@ -87,7 +87,7 @@ InitModel inits its own Model
 func (state *TrainingState) InitModel() {
 	// letter embedding vectors
 	tempModel := Model{}
-	tempModel["Wil"] = mat32.RandMat(state.InputSize, sequenceLength, 0, 0.08)
+	tempModel["Wil"] = mat32.RandMat(state.InputSize, sequenceLength, 0.08)
 
 	lstm := NewLSTMModel(sequenceLength, state.HiddenSizes, state.OutputSize)
 	utilAddToModel(tempModel, lstm)

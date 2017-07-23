@@ -38,7 +38,7 @@ func NewMat(n int, d int) *Mat {
 /*
 RandMat fills a Mat with random numbers and returns it.
 */
-func RandMat(n int, d int, mu int, std float32) *Mat {
+func RandMat(n int, d int, std float32) *Mat {
 	m := NewMat(n, d)
 	last := len(m.W)
 
