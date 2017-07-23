@@ -22,16 +22,16 @@ type TrainingState struct {
 	IndexToLetter  map[int]string
 	Vocab          []string
 	PerplexityList []float64 `json:"-"`
+	HiddenPrevs    []*mat32.Mat
+	CellPrevs      []*mat32.Mat
+	InputSize      int
+	OutputSize     int
 
 	// the following do not need to be persisted between training sessions
 	EpochSize     int
 	lastSaveEpoch float64
-	InputSize     int
-	OutputSize    int
 	DataSentences []string `json:"-"`
 	TickIterator  int `json:"-"`
-	hiddenPrevs   []*mat32.Mat
-	cellPrevs     []*mat32.Mat
 }
 
 /*
@@ -123,15 +123,15 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *C
 	// initialize when not yet initialized. we know there will always be hidden layers.
 	if len(prev.Hidden) == 0 {
 		// reset these
-		state.hiddenPrevs = make([]*mat32.Mat, len(hiddenSizes))
-		state.cellPrevs = make([]*mat32.Mat, len(hiddenSizes))
+		state.HiddenPrevs = make([]*mat32.Mat, len(hiddenSizes))
+		state.CellPrevs = make([]*mat32.Mat, len(hiddenSizes))
 		for s := 0; s < len(hiddenSizes); s++ {
-			state.hiddenPrevs[s] = mat32.NewMat(hiddenSizes[s], 1)
-			state.cellPrevs[s] = mat32.NewMat(hiddenSizes[s], 1)
+			state.HiddenPrevs[s] = mat32.NewMat(hiddenSizes[s], 1)
+			state.CellPrevs[s] = mat32.NewMat(hiddenSizes[s], 1)
 		}
 	} else {
-		state.hiddenPrevs = prev.Hidden
-		state.cellPrevs = prev.Cell
+		state.HiddenPrevs = prev.Hidden
+		state.CellPrevs = prev.Cell
 	}
 
 	var hidden []*mat32.Mat
@@ -153,8 +153,8 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *C
 		} else {
 			inputVector = hidden[d-1]
 		}
-		hiddenPrev = state.hiddenPrevs[d]
-		cellPrev = state.cellPrevs[d]
+		hiddenPrev = state.HiddenPrevs[d]
+		cellPrev = state.CellPrevs[d]
 
 		// ds is the index but as a string
 		ds := strconv.Itoa(d)
