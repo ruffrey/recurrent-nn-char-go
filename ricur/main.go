@@ -100,7 +100,7 @@ func main() {
 				},
 				cli.IntSliceFlag{
 					Name:  "hidden",
-					Value: &cli.IntSlice{30, 30, 30, 30, 30, 30, 30},
+					Value: &cli.IntSlice{40, 40, 40, 40, 40, 40, 40},
 					Usage: "For a new network, this is a representation of hidden layer sizes, where each value in the list is a layer of `int` size. Example: --hidden={100,50,75}",
 				},
 				cli.Float64Flag{
@@ -120,8 +120,8 @@ func main() {
 				},
 				cli.Float64Flag{
 					Name:  "seqlen",
-					Value: 6,
-					Usage: "(optional) Sequence Length: `int` frame size",
+					Value: 40,
+					Usage: "(optional) Sequence Length: `int` frame size. The sequence length specifies the length of each stream, which is also the limit at which the gradients can propagate backwards in time (Karpathy: char-rnn).",
 				},
 			},
 			Before: func(c *cli.Context) error {
