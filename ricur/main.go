@@ -100,12 +100,12 @@ func main() {
 				},
 				cli.IntSliceFlag{
 					Name:  "hidden",
-					Value: &cli.IntSlice{30, 30, 30},
+					Value: &cli.IntSlice{30, 30, 30, 30, 30, 30, 30},
 					Usage: "For a new network, this is a representation of hidden layer sizes, where each value in the list is a layer of `int` size. Example: --hidden={100,50,75}",
 				},
 				cli.Float64Flag{
 					Name:  "learn",
-					Value: 0.01,
+					Value: 0.001,
 					Usage: "(optional) Optimization param: `float32` , influences the amount of neuron weight changes",
 				},
 				cli.Float64Flag{
@@ -120,7 +120,7 @@ func main() {
 				},
 				cli.Float64Flag{
 					Name:  "seqlen",
-					Value: 10,
+					Value: 6,
 					Usage: "(optional) Sequence Length: `int` frame size",
 				},
 			},
