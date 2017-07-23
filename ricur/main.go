@@ -321,7 +321,7 @@ func tick(state *TrainingState, saveFilepath string) {
 		fmt.Println("ticktime", tickTime, "ms")
 		fmt.Println("medianPerplexity", medianPerplexity)
 
-		isNewEpoch := epoch != 0 && (epoch - state.lastSaveEpoch > .3)
+		isNewEpoch := epoch != 0 && (epoch - state.lastSaveEpoch > .1)
 		if isNewEpoch {
 			state.lastSaveEpoch = epoch
 			saveState(state, saveFilepath)
