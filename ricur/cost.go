@@ -3,7 +3,7 @@ package main
 import (
 	"math"
 	"strings"
-	"github.com/ruffrey/recurrent-nn-char-go/mat32"
+	"github.com/ruffrey/recurrent-nn-char-go/mat8"
 )
 
 /*
@@ -29,7 +29,7 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 	var prev *CellMemory
 	initial := CellMemory{}
 	prev = &initial
-	var probs *mat32.Mat
+	var probs *mat8.Mat
 
 	// loop through each letter of the selected sentence
 	for i := -1; i < n; i++ {
@@ -56,7 +56,7 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 
 		// set gradients into logprobabilities
 		// interpret output as logrithmicProbabilities
-		probs = mat32.Softmax(lh.Output) // compute the softmax probabilities
+		probs = mat8.Softmax(lh.Output) // compute the softmax probabilities
 
 		// all done? END?
 		if (len(probs.W) - 1) < ixTarget {

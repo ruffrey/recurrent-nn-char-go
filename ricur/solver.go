@@ -1,6 +1,6 @@
 package main
 
-import "github.com/ruffrey/recurrent-nn-char-go/mat32"
+import "github.com/ruffrey/recurrent-nn-char-go/mat8"
 
 /*
 Solver is a solver
@@ -8,7 +8,7 @@ Solver is a solver
 type Solver struct {
 	DecayRate float32
 	SmoothEPS float32
-	StepCache map[string]*mat32.Mat
+	StepCache map[string]*mat8.Mat
 }
 
 /*
@@ -18,7 +18,7 @@ func NewSolver() *Solver {
 	s := &Solver{
 		DecayRate: 0.999,
 		SmoothEPS: 1e-8,
-		StepCache: make(map[string]*mat32.Mat),
+		StepCache: make(map[string]*mat8.Mat),
 	}
 	return s
 }

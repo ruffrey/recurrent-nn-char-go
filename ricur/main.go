@@ -27,6 +27,12 @@ original 0.000001
 var regc float32
 
 /*
+Default gate range +/- this value.
+original 0.08
+*/
+var defaultGateWeight int8 = 12
+
+/*
 learningRate is how much to increase or decrease weights (AKA stepSize)
 original 0.01
 */
@@ -115,7 +121,7 @@ func main() {
 				},
 				cli.Float64Flag{
 					Name:  "gradmax",
-					Value: 5.0,
+					Value: math.MaxInt8,
 					Usage: "(optional) Gradient Clip: `float32` max value allowed for derivatives of weights before they are capped",
 				},
 				cli.Float64Flag{
@@ -183,7 +189,7 @@ func main() {
 					fmt.Println("--", sentences[i], "--")
 					state.CostFunction(sentences[i])
 					state.Backward()
-					state.StepSolver(solver, learningRate, regc, clipval)
+					state.StepSolver(solver, learningRate, clipval)
 					pred := state.PredictSentence(true, sampleSoftmaxTemperature, maxCharsGenerate, sentences[i])
 					fmt.Println(pred)
 				}
@@ -292,7 +298,7 @@ func tick(state *TrainingState, saveFilepath string) {
 	state.Backward()
 
 	// perform param update
-	state.StepSolver(solverecurrent, learningRate, regc, clipval)
+	state.StepSolver(solverecurrent, learningRate, clipval)
 
 	// keep track of perplexity between printing progress
 	state.PerplexityList = append(state.PerplexityList, costStruct.Ppl)

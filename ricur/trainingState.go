@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"github.com/ruffrey/recurrent-nn-char-go/mat32"
+	"github.com/ruffrey/recurrent-nn-char-go/mat8"
 )
 
 /*
@@ -14,7 +14,7 @@ TrainingState is the representation of the training data which gets saved or loa
 to disk between sessions.
 */
 type TrainingState struct {
-	mat32.Graph `json:"-"`
+	mat8.Graph `json:"-"`
 	HiddenSizes    []int
 	Model          Model
 	Solver         Solver
@@ -30,8 +30,8 @@ type TrainingState struct {
 	OutputSize    int
 	DataSentences []string `json:"-"`
 	TickIterator  int `json:"-"`
-	hiddenPrevs   []*mat32.Mat
-	cellPrevs     []*mat32.Mat
+	hiddenPrevs   []*mat8.Mat
+	cellPrevs     []*mat8.Mat
 }
 
 /*
@@ -87,7 +87,7 @@ InitModel inits its own Model
 func (state *TrainingState) InitModel() {
 	// letter embedding vectors
 	tempModel := Model{}
-	tempModel["Wil"] = mat32.RandMat(state.InputSize, sequenceLength, 0, 0.08)
+	tempModel["Wil"] = mat8.RandMat(state.InputSize, sequenceLength, 0, defaultGateWeight)
 
 	lstm := NewLSTMModel(sequenceLength, state.HiddenSizes, state.OutputSize)
 	utilAddToModel(tempModel, lstm)
@@ -103,14 +103,14 @@ func utilAddToModel(modelto Model, modelfrom Model) {
 }
 
 // worker processes intensive func presumably async then sends back the value
-func worker(fn func() *mat32.Mat, out chan *mat32.Mat) {
+func worker(fn func() *mat8.Mat, out chan *mat8.Mat) {
 	out <- fn()
 }
 
-var inputChan chan *mat32.Mat = make(chan *mat32.Mat)
-var forgetChan chan *mat32.Mat = make(chan *mat32.Mat)
-var outputChan chan *mat32.Mat = make(chan *mat32.Mat)
-var writeChan chan *mat32.Mat = make(chan *mat32.Mat)
+var inputChan chan *mat8.Mat = make(chan *mat8.Mat)
+var forgetChan chan *mat8.Mat = make(chan *mat8.Mat)
+var outputChan chan *mat8.Mat = make(chan *mat8.Mat)
+var writeChan chan *mat8.Mat = make(chan *mat8.Mat)
 
 /*
 ForwardLSTM does forward propagation for a single tick of LSTM. Will be called in a loop.
@@ -118,35 +118,35 @@ ForwardLSTM does forward propagation for a single tick of LSTM. Will be called i
 x is 1D column vector with observation
 prev is a struct containing hidden and cell from previous iteration
 */
-func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *CellMemory) *CellMemory {
+func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat8.Mat, prev *CellMemory) *CellMemory {
 
 	// initialize when not yet initialized. we know there will always be hidden layers.
 	if len(prev.Hidden) == 0 {
 		// reset these
-		state.hiddenPrevs = make([]*mat32.Mat, len(hiddenSizes))
-		state.cellPrevs = make([]*mat32.Mat, len(hiddenSizes))
+		state.hiddenPrevs = make([]*mat8.Mat, len(hiddenSizes))
+		state.cellPrevs = make([]*mat8.Mat, len(hiddenSizes))
 		for s := 0; s < len(hiddenSizes); s++ {
-			state.hiddenPrevs[s] = mat32.NewMat(hiddenSizes[s], 1)
-			state.cellPrevs[s] = mat32.NewMat(hiddenSizes[s], 1)
+			state.hiddenPrevs[s] = mat8.NewMat(hiddenSizes[s], 1)
+			state.cellPrevs[s] = mat8.NewMat(hiddenSizes[s], 1)
 		}
 	} else {
 		state.hiddenPrevs = prev.Hidden
 		state.cellPrevs = prev.Cell
 	}
 
-	var hidden []*mat32.Mat
-	var cell []*mat32.Mat
-	var inputVector *mat32.Mat
-	var hiddenPrev *mat32.Mat
-	var cellPrev *mat32.Mat
+	var hidden []*mat8.Mat
+	var cell []*mat8.Mat
+	var inputVector *mat8.Mat
+	var hiddenPrev *mat8.Mat
+	var cellPrev *mat8.Mat
 
 	// Parallizing this hot path is tricky because it
 	// relies on the previous array value.
 	for d := 0; d < len(hiddenSizes); d++ {
-		var inputGate *mat32.Mat
-		var forgetGate *mat32.Mat
-		var outputGate *mat32.Mat
-		var cellWrite *mat32.Mat
+		var inputGate *mat8.Mat
+		var forgetGate *mat8.Mat
+		var outputGate *mat8.Mat
+		var cellWrite *mat8.Mat
 
 		if d == 0 {
 			inputVector = x
@@ -162,7 +162,7 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *C
 		// send 4 jobs to the worker, when 4 come back, done.
 
 		// input gate
-		go worker(func() *mat32.Mat {
+		go worker(func() *mat8.Mat {
 			h0 := state.Mul(state.Model["Wix"+ds], inputVector)
 			h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
 			add1 := state.Add(h0, h1)
@@ -171,7 +171,7 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *C
 		}, inputChan)
 
 		// forget gate
-		go worker(func() *mat32.Mat {
+		go worker(func() *mat8.Mat {
 			h2 := state.Mul(state.Model["Wfx"+ds], inputVector)
 			h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
 			add3 := state.Add(h2, h3)
@@ -180,7 +180,7 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *C
 		}, forgetChan)
 
 		// output gate
-		go worker(func() *mat32.Mat {
+		go worker(func() *mat8.Mat {
 			h4 := state.Mul(state.Model["Wox"+ds], inputVector)
 			h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
 			add45 := state.Add(h4, h5)
@@ -189,7 +189,7 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *C
 		}, outputChan)
 
 		// write operation on cells
-		go worker(func() *mat32.Mat {
+		go worker(func() *mat8.Mat {
 			h6 := state.Mul(state.Model["Wcx"+ds], inputVector)
 			h7 := state.Mul(state.Model["Wch"+ds], hiddenPrev)
 			add67 := state.Add(h6, h7)
@@ -253,7 +253,7 @@ onto the existing model.
 stepSize is the learningRate
 regc is regularization
 */
-func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, regc float32, clipval float32) {
+func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, clipval float32) {
 	// perform parameter update
 	var wg sync.WaitGroup
 
@@ -262,7 +262,7 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, regc fl
 	for key, mod := range state.Model {
 		_, hasKey := solver.StepCache[key]
 		if !hasKey {
-			solver.StepCache[key] = mat32.NewMat(mod.RowCount, mod.ColumnCount)
+			solver.StepCache[key] = mat8.NewMat(mod.RowCount, mod.ColumnCount)
 		}
 	}
 
@@ -273,13 +273,13 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, regc fl
 		// Having this lower down in the for loop nest did not seem to
 		// speed things up, due to increased overhead of tracking
 		// goroutines by the runtime.
-		go (func(k string, m *mat32.Mat) {
+		go (func(k string, m *mat8.Mat) {
 			i := 0
 			n := len(m.W)
 			for ; i < n; i++ {
 				// rmsprop adaptive learning rate
-				mdwi := m.DW[i]
-				solver.StepCache[k].W[i] = solver.StepCache[k].W[i]*solver.DecayRate + (1.0-solver.DecayRate)*mdwi*mdwi
+				mdwi := float32(m.DW[i])
+				solver.StepCache[k].W[i] = int8(float32(solver.StepCache[k].W[i])*solver.DecayRate + (1.0-solver.DecayRate)*float32(mdwi*mdwi))
 
 				// gradient clip
 				if mdwi > clipval {
@@ -290,9 +290,9 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, regc fl
 				}
 
 				// update (and regularize)
-				kwi := solver.StepCache[k].W[i]
+				kwi := float32(solver.StepCache[k].W[i])
 				sqrtSumEPS := float32(math.Sqrt(float64(kwi + solver.SmoothEPS)))
-				m.W[i] += -stepSize*mdwi/sqrtSumEPS - regc*m.W[i]
+				m.W[i] += int8(-stepSize*mdwi/sqrtSumEPS - regc*float32(m.W[i]))
 				m.DW[i] = 0 // reset gradients for next iteration
 			}
 			wg.Done()
@@ -304,7 +304,7 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, regc fl
 /*
 PredictSentence creates a prediction based on the current training state. similar to cost function.
 */
-func (state *TrainingState) PredictSentence(samplei bool, temperature float32, maxCharsGenerate int, seedString string) (s string) {
+func (state *TrainingState) PredictSentence(samplei bool, temperature int8, maxCharsGenerate int, seedString string) (s string) {
 	state.NeedsBackprop = false // temporary but do not lose functions
 	var prev *CellMemory
 	initial := &CellMemory{}
@@ -351,12 +351,12 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float32, m
 			}
 		}
 
-		probs := mat32.Softmax(logrithmicProbabilities)
+		probs := mat8.Softmax(logrithmicProbabilities)
 
 		if samplei {
-			ixSource = mat32.SampleArgmaxI(probs.W)
+			ixSource = mat8.SampleArgmaxI(probs.W)
 		} else {
-			ixSource = mat32.ArgmaxI(probs.W)
+			ixSource = mat8.ArgmaxI(probs.W)
 		}
 
 		if ixSource == 0 || ixSource == len(probs.W) {
