@@ -162,39 +162,43 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat8.Mat, prev *Ce
 		// send 4 jobs to the worker, when 4 come back, done.
 
 		// input gate
-		go worker(func() *mat8.Mat {
+		go worker(func() (squashed *mat8.Mat) {
 			h0 := state.Mul(state.Model["Wix"+ds], inputVector)
 			h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
 			add1 := state.Add(h0, h1)
 			add2 := state.Add(add1, state.Model["bi"+ds])
-			return state.Sigmoid(add2)
+			squashed = state.Sigmoid(add2)
+			return squashed
 		}, inputChan)
 
 		// forget gate
-		go worker(func() *mat8.Mat {
+		go worker(func() (squashed *mat8.Mat) {
 			h2 := state.Mul(state.Model["Wfx"+ds], inputVector)
 			h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
 			add3 := state.Add(h2, h3)
 			add4 := state.Add(add3, state.Model["bf"+ds])
-			return state.Sigmoid(add4)
+			squashed = state.Sigmoid(add4)
+			return squashed
 		}, forgetChan)
 
 		// output gate
-		go worker(func() *mat8.Mat {
+		go worker(func() (squashed *mat8.Mat) {
 			h4 := state.Mul(state.Model["Wox"+ds], inputVector)
 			h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
 			add45 := state.Add(h4, h5)
 			add45bods := state.Add(add45, state.Model["bo"+ds])
-			return state.Sigmoid(add45bods)
+			squashed = state.Sigmoid(add45bods)
+			return squashed
 		}, outputChan)
 
 		// write operation on cells
-		go worker(func() *mat8.Mat {
+		go worker(func() (squashed *mat8.Mat) {
 			h6 := state.Mul(state.Model["Wcx"+ds], inputVector)
 			h7 := state.Mul(state.Model["Wch"+ds], hiddenPrev)
 			add67 := state.Add(h6, h7)
 			add67bcds := state.Add(add67, state.Model["bc"+ds])
-			return state.Tanh(add67bcds)
+			squashed = state.Tanh(add67bcds)
+			return squashed
 		}, writeChan)
 
 		gatesComplete := 0

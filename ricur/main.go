@@ -111,7 +111,7 @@ func main() {
 				},
 				cli.Float64Flag{
 					Name:  "learn",
-					Value: 0.01,
+					Value: 1,
 					Usage: "(optional) Optimization param: `float32` , influences the amount of neuron weight changes",
 				},
 				cli.Float64Flag{

@@ -110,7 +110,7 @@ func (g *Graph) Tanh(m *Mat) *Mat {
 	for ix := 0; ix < n; ix++ {
 		// alternative tahn
 		x := float64(m.W[ix])
-		out.W[ix] = 127 * int8(math.Tanh(x/127))
+		out.W[ix] = int8(127 * math.Tanh(x/127))
 	}
 
 	if g.NeedsBackprop {
@@ -132,7 +132,6 @@ Sigmoid applies sigmoid nonlinearity
 Squashing function to keep values inside a range. Normally for
 sigmoid it is [0,1] but here we use
 
-TODO: int8 sigmoid
 */
 func (g *Graph) Sigmoid(m *Mat) *Mat {
 	//
@@ -141,7 +140,7 @@ func (g *Graph) Sigmoid(m *Mat) *Mat {
 	for ix := 0; ix < n; ix++ {
 		// alternative sigmoid
 		x := float64(m.W[ix])
-		out.W[ix] = 64 + 64*int8(math.Tanh(x/64))
+		out.W[ix] = 63 + int8(63*(math.Tanh(x/63)))
 	}
 
 	if g.NeedsBackprop {
