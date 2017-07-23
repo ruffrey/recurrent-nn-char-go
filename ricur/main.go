@@ -105,7 +105,7 @@ func main() {
 				},
 				cli.Float64Flag{
 					Name:  "learn",
-					Value: 0.001,
+					Value: 0.01,
 					Usage: "(optional) Optimization param: `float32` , influences the amount of neuron weight changes",
 				},
 				cli.Float64Flag{
@@ -321,11 +321,10 @@ func tick(state *TrainingState, saveFilepath string) {
 		fmt.Println("ticktime", tickTime, "ms")
 		fmt.Println("medianPerplexity", medianPerplexity)
 
-		iepoch := int(epoch)
-		isNewEpoch := iepoch != 0 && iepoch > state.lastSaveEpoch
+		isNewEpoch := epoch != 0 && (epoch - state.lastSaveEpoch > .3)
 		if isNewEpoch {
-			state.lastSaveEpoch = iepoch
-			go saveState(state, saveFilepath)
+			state.lastSaveEpoch = epoch
+			saveState(state, saveFilepath)
 		}
 	}
 }

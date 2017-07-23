@@ -25,7 +25,7 @@ type TrainingState struct {
 
 	// the following do not need to be persisted between training sessions
 	EpochSize     int
-	lastSaveEpoch int
+	lastSaveEpoch float64
 	InputSize     int
 	OutputSize    int
 	DataSentences []string `json:"-"`

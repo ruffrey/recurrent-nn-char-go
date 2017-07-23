@@ -1,7 +1,5 @@
 package mat32
 
-import "encoding/json"
-
 /*
 Mat holds a matrix.
 */
@@ -12,15 +10,15 @@ type Mat struct {
 	DW          []float32
 }
 
-func (m *Mat) toJSON() (string, error) {
-	b, err := json.Marshal(m)
-
-	if err != nil {
-		return "", err
-	}
-
-	return string(b[:]), err
-}
+//func (m *Mat) toJSON() (string, error) {
+//	b, err := json.Marshal(m)
+//
+//	if err != nil {
+//		return "", err
+//	}
+//
+//	return string(b[:]), err
+//}
 
 func zeros(size int) []float32 {
 	// no need to initialize zero values
