@@ -105,16 +105,6 @@ func utilAddToModel(modelto Model, modelfrom Model) {
 	}
 }
 
-// worker processes intensive func presumably async then sends back the value
-func worker(fn func() *mat32.Mat, out chan *mat32.Mat) {
-	out <- fn()
-}
-
-var inputChan chan *mat32.Mat = make(chan *mat32.Mat)
-var forgetChan chan *mat32.Mat = make(chan *mat32.Mat)
-var outputChan chan *mat32.Mat = make(chan *mat32.Mat)
-var writeChan chan *mat32.Mat = make(chan *mat32.Mat)
-
 /*
 ForwardLSTM does forward propagation for a single tick of LSTM. Will be called in a loop.
 
@@ -144,13 +134,14 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *C
 	var cellPrev *mat32.Mat
 
 	// Parallizing this hot path is tricky because it
-	// relies on the previous array value.
+	// relies on the previous array value, so the best
+	// we can do is compute a few parts inside the loop in parallel
+	var inputGate *mat32.Mat
+	var forgetGate *mat32.Mat
+	var outputGate *mat32.Mat
+	var cellWrite *mat32.Mat
+	var wg sync.WaitGroup
 	for d := 0; d < len(hiddenSizes); d++ {
-		var inputGate *mat32.Mat
-		var forgetGate *mat32.Mat
-		var outputGate *mat32.Mat
-		var cellWrite *mat32.Mat
-
 		if d == 0 {
 			inputVector = x
 		} else {
@@ -163,75 +154,66 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *C
 		ds := strconv.Itoa(d)
 
 		// send 4 jobs to the worker, when 4 come back, done.
-
+		wg.Add(4)
 		// input gate
-		go worker(func() *mat32.Mat {
+		go (func() {
 			if simplified {
 				h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
-				return state.Sigmoid(h1)
+				inputGate = state.Sigmoid(h1)
+				wg.Done()
+				return
 			}
 			h0 := state.Mul(state.Model["Wix"+ds], inputVector)
 			h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
 			add1 := state.Add(h0, h1)
 			add2 := state.Add(add1, state.Model["bi"+ds])
-			return state.Sigmoid(add2)
-		}, inputChan)
+			inputGate = state.Sigmoid(add2)
+			wg.Done()
+		})()
 
 		// forget gate
-		go worker(func() *mat32.Mat {
+		go (func() {
 			if simplified {
 				h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
-				return state.Sigmoid(h3)
+				forgetGate = state.Sigmoid(h3)
+				wg.Done()
+				return
 			}
 			h2 := state.Mul(state.Model["Wfx"+ds], inputVector)
 			h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
 			add3 := state.Add(h2, h3)
 			add4 := state.Add(add3, state.Model["bf"+ds])
-			return state.Sigmoid(add4)
-		}, forgetChan)
+			forgetGate = state.Sigmoid(add4)
+			wg.Done()
+		})()
 
 		// output gate
-		go worker(func() *mat32.Mat {
+		go (func() {
 			if simplified {
 				h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
-				return state.Sigmoid(h5)
+				outputGate = state.Sigmoid(h5)
+				wg.Done()
+				return
 			}
 			h4 := state.Mul(state.Model["Wox"+ds], inputVector)
 			h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
 			add45 := state.Add(h4, h5)
 			add45bods := state.Add(add45, state.Model["bo"+ds])
-			return state.Sigmoid(add45bods)
-		}, outputChan)
+			outputGate = state.Sigmoid(add45bods)
+			wg.Done()
+		})()
 
 		// write operation on cells
-		go worker(func() *mat32.Mat {
+		go (func() {
 			h6 := state.Mul(state.Model["Wcx"+ds], inputVector)
 			h7 := state.Mul(state.Model["Wch"+ds], hiddenPrev)
 			add67 := state.Add(h6, h7)
 			add67bcds := state.Add(add67, state.Model["bc"+ds])
-			return state.Tanh(add67bcds)
-		}, writeChan)
+			cellWrite = state.Tanh(add67bcds)
+			wg.Done()
+		})()
 
-		gatesComplete := 0
-		for {
-			select {
-			case inputGate = <-inputChan:
-				gatesComplete++
-				break
-			case forgetGate = <-forgetChan:
-				gatesComplete++
-				break
-			case outputGate = <-outputChan:
-				gatesComplete++
-				break
-			case cellWrite = <-writeChan:
-				gatesComplete++
-				break
-			}
-			if gatesComplete >= 4 {
-				break
-			}
-		}
+		wg.Wait()
 
 		// compute new cell activation
 		retainCell := state.Eltmul(forgetGate, cellPrev) // what do we keep from cell
