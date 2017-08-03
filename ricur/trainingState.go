@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
 	"github.com/ruffrey/recurrent-nn-char-go/mat32"
 )
 
@@ -14,7 +15,7 @@ TrainingState is the representation of the training data which gets saved or loa
 to disk between sessions.
 */
 type TrainingState struct {
-	mat32.Graph `json:"-"`
+	mat32.Graph    `json:"-"`
 	HiddenSizes    []int
 	Model          Model
 	Solver         Solver
@@ -31,7 +32,7 @@ type TrainingState struct {
 	EpochSize     int
 	lastSaveEpoch float64
 	DataSentences []string `json:"-"`
-	TickIterator  int `json:"-"`
+	TickIterator  int      `json:"-"`
 }
 
 /*
@@ -165,6 +166,10 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *C
 
 		// input gate
 		go worker(func() *mat32.Mat {
+			if simplified {
+				h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
+				return state.Sigmoid(h1)
+			}
 			h0 := state.Mul(state.Model["Wix"+ds], inputVector)
 			h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
 			add1 := state.Add(h0, h1)
@@ -174,6 +179,10 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *C
 
 		// forget gate
 		go worker(func() *mat32.Mat {
+			if simplified {
+				h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
+				return state.Sigmoid(h3)
+			}
 			h2 := state.Mul(state.Model["Wfx"+ds], inputVector)
 			h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
 			add3 := state.Add(h2, h3)
@@ -183,6 +192,10 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *C
 
 		// output gate
 		go worker(func() *mat32.Mat {
+			if simplified {
+				h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
+				return state.Sigmoid(h5)
+			}
 			h4 := state.Mul(state.Model["Wox"+ds], inputVector)
 			h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
 			add45 := state.Add(h4, h5)
@@ -246,11 +259,8 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *mat32.Mat, prev *C
 }
 
 /*
-StepSolver does a param update on the model, increasing or decreasting the weights,
+StepSolver does a param update on the model, increasing or decreasing the weights,
 and clipping the derivative first if necessary.
-
-Should model be a poiner? unable to loop over it if not. So we return it and then copy it back
-onto the existing model.
 
 stepSize is the learningRate
 regc is regularization
@@ -306,7 +316,7 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize float32, regc fl
 /*
 PredictSentence creates a prediction based on the current training state. similar to cost function.
 */
-func (state *TrainingState) PredictSentence(samplei bool, temperature float32, maxCharsGenerate int, seedString string) (s string) {
+func (state *TrainingState) PredictSentence(maxCharsGenerate int, seedString string) (s string) {
 	state.NeedsBackprop = false // temporary but do not lose functions
 	var prev *CellMemory
 	initial := &CellMemory{}
@@ -341,25 +351,9 @@ func (state *TrainingState) PredictSentence(samplei bool, temperature float32, m
 
 		// sample predicted letter
 		logrithmicProbabilities := lh.Output
-		if temperature != 1.0 && samplei {
-			// scale log probabilities by temperature and renormalize
-			// if temperature is high, logrithmicProbabilities will go towards zero
-			// and the softmax outputs will be more diffuse. if temperature is
-			// very low, the softmax outputs will be more peaky
-			q := 0
-			nq := len(logrithmicProbabilities.W)
-			for ; q < nq; q++ {
-				logrithmicProbabilities.W[q] /= temperature
-			}
-		}
-
 		probs := mat32.Softmax(logrithmicProbabilities)
 
-		if samplei {
-			ixSource = mat32.SampleArgmaxI(probs.W)
-		} else {
-			ixSource = mat32.ArgmaxI(probs.W)
-		}
+		ixSource = mat32.SampleArgmaxI(probs.W)
 
 		if ixSource == 0 || ixSource == len(probs.W) {
 			break // start or end token predicted, break out

@@ -51,12 +51,15 @@ Other definitions:
 */
 var sequenceLength int
 
+/*
+simplified will use a simplified version of LSTM with no input signal
+or bias on all three gates.
+*/
+var simplified = false
+
 /* */
 
 // prediction params
-
-// how peaky model predictions should be
-const sampleSoftmaxTemperature = 1.0
 
 // max length of generated sentences
 const maxCharsGenerate = 500
@@ -100,8 +103,8 @@ func main() {
 				},
 				cli.IntSliceFlag{
 					Name:  "hidden",
-					Value: &cli.IntSlice{40, 40, 40, 40, 40, 40, 40},
-					Usage: "For a new network, this is a representation of hidden layer sizes, where each value in the list is a layer of `int` size. Example: --hidden={100,50,75}",
+					Value: &cli.IntSlice{100, 75, 100},
+					Usage: "For a new network, this is a representation of hidden layer sizes, where each value in the list is a layer of `int` size. Example: --hidden={100,75,100}",
 				},
 				cli.Float64Flag{
 					Name:  "learn",
@@ -123,12 +126,17 @@ func main() {
 					Value: 40,
 					Usage: "(optional) Sequence Length: `int` frame size. The sequence length specifies the length of each stream, which is also the limit at which the gradients can propagate backwards in time (Karpathy: char-rnn).",
 				},
+				cli.BoolFlag{
+					Name:  "simplified",
+					Usage: "(optional) Use a simplified bias calculation (from LSTM2, Lu & Salem, 2017). Should be faster but ideally uses learn rate of 0.0001.",
+				},
 			},
 			Before: func(c *cli.Context) error {
 				learningRate = float32(c.Float64("learn"))
 				regc = float32(c.Float64("regc"))
 				clipval = float32(c.Float64("gradmax"))
 				sequenceLength = c.Int("seqlen")
+				simplified = c.Bool("simplified")
 
 				return nil
 			},
@@ -184,7 +192,7 @@ func main() {
 					state.CostFunction(sentences[i])
 					state.Backward()
 					state.StepSolver(solver, learningRate, regc, clipval)
-					pred := state.PredictSentence(true, sampleSoftmaxTemperature, maxCharsGenerate, sentences[i])
+					pred := state.PredictSentence(maxCharsGenerate, sentences[i])
 					fmt.Println(pred)
 				}
 
@@ -310,7 +318,7 @@ func tick(state *TrainingState, saveFilepath string) {
 		fmt.Println("---------------------")
 		// draw samples
 		for q := 0; q < 2; q++ {
-			pred = state.PredictSentence(true, sampleSoftmaxTemperature, maxCharsGenerate, "")
+			pred = state.PredictSentence(maxCharsGenerate, "")
 			fmt.Println(pred)
 		}
 		fmt.Println("---------------------")
@@ -321,7 +329,7 @@ func tick(state *TrainingState, saveFilepath string) {
 		fmt.Println("ticktime", tickTime, "ms")
 		fmt.Println("medianPerplexity", medianPerplexity)
 
-		isNewEpoch := epoch != 0 && (epoch - state.lastSaveEpoch > .1)
+		isNewEpoch := epoch != 0 && (epoch-state.lastSaveEpoch > .1)
 		if isNewEpoch {
 			state.lastSaveEpoch = epoch
 			saveState(state, saveFilepath)

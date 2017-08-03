@@ -2,14 +2,13 @@ package mat32
 
 import (
 	"math"
-	"sync"
 	"runtime"
+	"sync"
 )
 
 type backprop func()
 
 var concurrentThreads int = runtime.NumCPU()
-
 
 /*
 Graph is the neural network graph.
@@ -17,7 +16,7 @@ Graph is the neural network graph.
 type Graph struct {
 	NeedsBackprop bool
 	Backprop      []backprop // holds backprop functions
-	bpMux sync.Mutex // modifying backprop array
+	bpMux         sync.Mutex // modifying backprop array
 }
 
 /*
@@ -46,7 +45,7 @@ func (g *Graph) Backward() {
 	// only do as many goroutines at a a time as threads.
 	// too many overloads the runtime with a large and deep neural net.
 	i := totalBackprops - 1
-	for ; i >= 0; {
+	for i >= 0 {
 		// TODO: fix data races, somehow
 		for thread := 0; i >= 0 && thread < concurrentThreads; {
 			thread++
@@ -242,7 +241,7 @@ func (g *Graph) Add(m1 *Mat, m2 *Mat) *Mat {
 }
 
 /*
-Eltmul does something with multiplication
+Eltmul does element-wise multiplication
 */
 func (g *Graph) Eltmul(m1 *Mat, m2 *Mat) *Mat {
 	Assert(len(m1.W) == len(m2.W), "Cannot Eltmul")
