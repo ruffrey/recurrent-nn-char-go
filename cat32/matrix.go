@@ -1,6 +1,8 @@
 package cat32
 
 import (
+	"math"
+
 	"github.com/bjwbell/gensimd/simd"
 )
 
@@ -33,11 +35,12 @@ func (m *Mat) Value(index int) (val float32) {
 }
 
 func zeros(size int) (m []simd.F32x4) {
+	extra := 0
 	if size%4 != 0 {
-		panic("mat size must be multiple of 4")
+		extra++
 	}
 	// no need to initialize zero values
-	m = make([]simd.F32x4, (size/4)+1)
+	m = make([]simd.F32x4, int(math.Max(1, float64(size/4)))+extra)
 	return m
 }
 
@@ -45,7 +48,7 @@ func zeros(size int) (m []simd.F32x4) {
 NewMat instantiates a new matrix.
 */
 func NewMat(n int, d int) (m *Mat) {
-	m = &Mat{RowCount: n, ColumnCount: d}
+	m = &Mat{RowCount: n, ColumnCount: int(math.Max(1, float64(d/4)))}
 	m.W = zeros(n * d)
 	m.DW = zeros(n * d)
 	return m

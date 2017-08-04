@@ -141,7 +141,7 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *cat32.Mat, prev *C
 	var forgetGate *cat32.Mat
 	var outputGate *cat32.Mat
 	var cellWrite *cat32.Mat
-	var wg sync.WaitGroup
+	//var wg sync.WaitGroup
 	for d := 0; d < len(hiddenSizes); d++ {
 		if d == 0 {
 			inputVector = x
@@ -155,66 +155,66 @@ func (state *TrainingState) ForwardLSTM(hiddenSizes []int, x *cat32.Mat, prev *C
 		ds := strconv.Itoa(d)
 
 		// send 4 jobs to the worker, when 4 come back, done.
-		wg.Add(4)
+		//wg.Add(4)
 		// input gate
-		go (func() {
-			if simplified {
-				h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
-				inputGate = state.Sigmoid(h1)
-				wg.Done()
-				return
-			}
-			h0 := state.Mul(state.Model["Wix"+ds], inputVector)
+		//go (func() {
+		if simplified {
 			h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
-			add1 := state.Add(h0, h1)
-			add2 := state.Add(add1, state.Model["bi"+ds])
-			inputGate = state.Sigmoid(add2)
-			wg.Done()
-		})()
+			inputGate = state.Sigmoid(h1)
+			//wg.Done()
+			//return
+		}
+		h0 := state.Mul(state.Model["Wix"+ds], inputVector)
+		h1 := state.Mul(state.Model["Wih"+ds], hiddenPrev)
+		add1 := state.Add(h0, h1)
+		add2 := state.Add(add1, state.Model["bi"+ds])
+		inputGate = state.Sigmoid(add2)
+		//	wg.Done()
+		//})()
 
 		// forget gate
-		go (func() {
-			if simplified {
-				h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
-				forgetGate = state.Sigmoid(h3)
-				wg.Done()
-				return
-			}
-			h2 := state.Mul(state.Model["Wfx"+ds], inputVector)
+		//go (func() {
+		if simplified {
 			h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
-			add3 := state.Add(h2, h3)
-			add4 := state.Add(add3, state.Model["bf"+ds])
-			forgetGate = state.Sigmoid(add4)
-			wg.Done()
-		})()
+			forgetGate = state.Sigmoid(h3)
+			//wg.Done()
+			//return
+		}
+		h2 := state.Mul(state.Model["Wfx"+ds], inputVector)
+		h3 := state.Mul(state.Model["Wfh"+ds], hiddenPrev)
+		add3 := state.Add(h2, h3)
+		add4 := state.Add(add3, state.Model["bf"+ds])
+		forgetGate = state.Sigmoid(add4)
+		//	wg.Done()
+		//})()
 
 		// output gate
-		go (func() {
-			if simplified {
-				h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
-				outputGate = state.Sigmoid(h5)
-				wg.Done()
-				return
-			}
-			h4 := state.Mul(state.Model["Wox"+ds], inputVector)
+		//go (func() {
+		if simplified {
 			h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
-			add45 := state.Add(h4, h5)
-			add45bods := state.Add(add45, state.Model["bo"+ds])
-			outputGate = state.Sigmoid(add45bods)
-			wg.Done()
-		})()
+			outputGate = state.Sigmoid(h5)
+			//wg.Done()
+			//return
+		}
+		h4 := state.Mul(state.Model["Wox"+ds], inputVector)
+		h5 := state.Mul(state.Model["Woh"+ds], hiddenPrev)
+		add45 := state.Add(h4, h5)
+		add45bods := state.Add(add45, state.Model["bo"+ds])
+		outputGate = state.Sigmoid(add45bods)
+		//	wg.Done()
+		//})()
 
 		// write operation on cells
-		go (func() {
-			h6 := state.Mul(state.Model["Wcx"+ds], inputVector)
-			h7 := state.Mul(state.Model["Wch"+ds], hiddenPrev)
-			add67 := state.Add(h6, h7)
-			add67bcds := state.Add(add67, state.Model["bc"+ds])
-			cellWrite = state.Tanh(add67bcds)
-			wg.Done()
-		})()
-
-		wg.Wait()
+		//go (func() {
+		h6 := state.Mul(state.Model["Wcx"+ds], inputVector)
+		h7 := state.Mul(state.Model["Wch"+ds], hiddenPrev)
+		add67 := state.Add(h6, h7)
+		add67bcds := state.Add(add67, state.Model["bc"+ds])
+		cellWrite = state.Tanh(add67bcds)
+		//	wg.Done()
+		//})()
+		//
+		//wg.Wait()
 
 		// compute new cell activation
 		retainCell := state.Eltmul(forgetGate, cellPrev) // what do we keep from cell
@@ -274,7 +274,7 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize simd.F32x4, regc
 			for ; i < n; i++ {
 				// rmsprop adaptive learning rate
 				mdwi := m.DW[i]
-				solver.StepCache[k].W[i] = cat32.Mulf32x4(solver.StepCache[k].W[i], cat32.Addf32x4(solver.DecayRate, cat32.Mulf32x4(cat32.Mulf32x4(cat32.Subf32x4(cat32.F32_1, solver.DecayRate), mdwi), mdwi)))
+				solver.StepCache[k].W[i] = cat32.MulF32x4(solver.StepCache[k].W[i], cat32.AddF32x4(solver.DecayRate, cat32.MulF32x4(cat32.MulF32x4(cat32.SubF32x4(cat32.F32_1, solver.DecayRate), mdwi), mdwi)))
 
 				// gradient clip
 				for f := 0; f < 4; f++ {
@@ -288,14 +288,14 @@ func (state *TrainingState) StepSolver(solver *Solver, stepSize simd.F32x4, regc
 
 				// update (and regularize)
 				kwi := solver.StepCache[k].W[i]
-				kwi_EPS := cat32.Addf32x4(kwi, solver.SmoothEPS)
+				kwi_EPS := cat32.AddF32x4(kwi, solver.SmoothEPS)
 				sqrtSumEPS := simd.F32x4{
 					float32(math.Sqrt(float64(kwi_EPS[0]))),
 					float32(math.Sqrt(float64(kwi_EPS[1]))),
 					float32(math.Sqrt(float64(kwi_EPS[2]))),
 					float32(math.Sqrt(float64(kwi_EPS[3]))),
 				}
-				m.W[i] = cat32.Subf32x4(m.W[i], cat32.Subf32x4(cat32.Divf32x4(cat32.Mulf32x4(stepSize, mdwi), sqrtSumEPS), cat32.Mulf32x4(regc, m.W[i])))
+				m.W[i] = cat32.SubF32x4(m.W[i], cat32.SubF32x4(cat32.DivF32x4(cat32.MulF32x4(stepSize, mdwi), sqrtSumEPS), cat32.MulF32x4(regc, m.W[i])))
 				m.DW[i] = simd.F32x4{0, 0, 0, 0} // reset gradients for next iteration
 			}
 			wg.Done()

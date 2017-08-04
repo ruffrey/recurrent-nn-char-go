@@ -68,7 +68,7 @@ func (state *TrainingState) CostFunction(sent string) Cost {
 
 		// write gradients into log probabilities
 		lh.Output.DW = probs.W
-		lh.Output.DW[ixTarget] = cat32.Subf32x4(lh.Output.DW[ixTarget], cat32.F32_1)
+		lh.Output.DW[ixTarget] = cat32.SubF32x4(lh.Output.DW[ixTarget], cat32.F32_1)
 
 		prev = lh
 	}

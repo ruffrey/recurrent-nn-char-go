@@ -2,19 +2,42 @@
 
 #include "textflag.h"
 
-TEXT ·Addf32x4(SB),$8-48
+TEXT ·AddF32x4(SB),$24-48
         MOVQ         $0, ret0+32(FP)
         MOVQ         $0, ret0+40(FP)
+block0:
+        MOVUPS       y+16(FP), X15
+        MOVUPS       x+0(FP), X14
+        ADDPS        X15, X14
+        MOVUPS       X14, ret0+32(FP)
+        RET
 
-TEXT ·Subf32x4(SB),$8-48
+TEXT ·SubF32x4(SB),$24-48
         MOVQ         $0, ret0+32(FP)
         MOVQ         $0, ret0+40(FP)
+block0:
+        MOVUPS       y+16(FP), X15
+        MOVUPS       x+0(FP), X14
+        SUBPS        X15, X14
+        MOVUPS       X14, ret0+32(FP)
+        RET
 
-TEXT ·Mulf32x4(SB),$8-48
+TEXT ·MulF32x4(SB),$24-48
         MOVQ         $0, ret0+32(FP)
         MOVQ         $0, ret0+40(FP)
+block0:
+        MOVUPS       y+16(FP), X15
+        MOVUPS       x+0(FP), X14
+        MULPS        X15, X14
+        MOVUPS       X14, ret0+32(FP)
+        RET
 
-TEXT ·Divf32x4(SB),$8-48
+TEXT ·DivF32x4(SB),$24-48
         MOVQ         $0, ret0+32(FP)
         MOVQ         $0, ret0+40(FP)
-
+block0:
+        MOVUPS       y+16(FP), X15
+        MOVUPS       x+0(FP), X14
+        DIVPS        X15, X14
+        MOVUPS       X14, ret0+32(FP)
+        RET
