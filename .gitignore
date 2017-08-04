@@ -2,6 +2,7 @@
 recurrent-nn-char-go
 ricur/ricur
 build
+chargoc/chargoc
 
 # training files
 models
